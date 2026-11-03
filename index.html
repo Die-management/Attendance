@@ -85,7 +85,7 @@
                         <label class="block text-xs font-medium text-gray-500 mb-1">Barcode Reader Input (Auto Entry)</label>
                         <input type="text" id="barcodeInput" placeholder="Scan Barcode or Type ID & Enter..." 
                             class="w-full border-2 border-blue-400 rounded-lg p-3 text-base focus:ring-2 focus:ring-blue-600 outline-none font-mono" autofocus>
-                        <p class="text-xs text-gray-400 mt-1">Plug-and-play USB barcode scanners automatically submit here.</p>
+                        <p class="text-xs text-gray-400 mt-1">Plug-and-play USB barcode scanners automatically submit here. 5-minute duplicate scan cooldown active.</p>
                     </div>
 
                     <!-- Camera Scanner Section -->
@@ -359,8 +359,11 @@
         };
 
         let attendanceLogs = JSON.parse(localStorage.getItem('attendanceLogs')) || [];
+        let lastScanTimestamps = JSON.parse(localStorage.getItem('lastScanTimestamps')) || {};
         let html5QrcodeScanner = null;
         let activeBadgeWorker = null;
+
+        const SCAN_COOLDOWN_MS = 5 * 60 * 1000; // 5 Minutes Cooldown
 
         document.addEventListener("DOMContentLoaded", () => {
             document.getElementById('currentDateDisplay').innerText = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
@@ -484,12 +487,26 @@
         }
 
         function handleBarcodeScan(scannedId) {
+            const nowTime = Date.now();
+            let worker = workers[scannedId];
+            let name = worker ? worker.name : `Worker (${scannedId})`;
+
+            // Check 5-minute cooldown timer per worker ID
+            if (lastScanTimestamps[scannedId]) {
+                const timeDiff = nowTime - lastScanTimestamps[scannedId];
+                if (timeDiff < SCAN_COOLDOWN_MS) {
+                    const remainingSec = Math.ceil((SCAN_COOLDOWN_MS - timeDiff) / 1000);
+                    const remMin = Math.floor(remainingSec / 60);
+                    const remSec = remainingSec % 60;
+                    showAlert(`⚠️ DUPLICATE SCAN IGNORED: ${name} scanned recently. Please wait ${remMin}m ${remSec}s before scanning again.`, 'bg-amber-100 border-amber-400 text-amber-800');
+                    return;
+                }
+            }
+
             const todayStr = new Date().toISOString().split('T')[0];
             const now = new Date();
             const timeStr = now.toLocaleTimeString('en-IN', { hour12: false });
             
-            let worker = workers[scannedId];
-            let name = worker ? worker.name : `Worker (${scannedId})`;
             let type = worker ? (worker.type || 'Regular') : 'Regular';
             let agency = worker ? (worker.agency || '-') : '-';
 
@@ -525,12 +542,16 @@
                 showAlert(`🔴 OUT PUNCH: ${name} checked out at ${timeStr}. OT: ${record.otHours} hrs`, 'bg-purple-100 border-purple-400 text-purple-800');
             }
 
+            // Update scan timestamp lock
+            lastScanTimestamps[scannedId] = nowTime;
+            localStorage.setItem('lastScanTimestamps', JSON.stringify(lastScanTimestamps));
+
             localStorage.setItem('attendanceLogs', JSON.stringify(attendanceLogs));
             renderDailyTable();
         }
 
         function calculateOvertime(record) {
-            if (record.manualOT) return; // Keep manual override if present
+            if (record.manualOT) return;
 
             const shiftHrs = parseFloat(document.getElementById('shiftHours').value) || 8;
 
@@ -586,16 +607,6 @@
                     alert("Invalid overtime value. Please enter a positive number.");
                 }
             }
-        }
-
-        function resetManualOT(index) {
-            let record = attendanceLogs[index];
-            if (!record) return;
-            record.manualOT = false;
-            calculateOvertime(record);
-            localStorage.setItem('attendanceLogs', JSON.stringify(attendanceLogs));
-            renderDailyTable();
-            renderHistoryTable();
         }
 
         function renderDailyTable() {
@@ -803,7 +814,7 @@
 
             setTimeout(() => {
                 alertBox.classList.add('hidden');
-            }, 4000);
+            }, 5000);
         }
 
         function toggleCameraScanner() {
