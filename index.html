@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worker Attendance & Overtime Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Html5-QRCode Library for Web Camera Scanner -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- JsBarcode Library for Rendering Barcodes -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; }
+        }
+        .print-only { display: none; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans min-h-screen">
+
+    <!-- Printable Barcode Section -->
+    <div id="printBadgeArea" class="print-only p-8 text-center border-2 border-black max-w-xs mx-auto mt-10 rounded">
+        <h2 id="printWorkerName" class="text-xl font-bold uppercase mb-1"></h2>
+        <p id="printWorkerType" class="text-xs font-semibold text-blue-600 mb-1"></p>
+        <p id="printWorkerDept" class="text-sm font-semibold text-gray-600 mb-4"></p>
+        <svg id="printBarcodeSvg" class="mx-auto"></svg>
+        <p class="text-xs mt-2 text-gray-500">Worker Attendance ID Badge</p>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-blue-700 text-white shadow-md no-print">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <h1 class="text-2xl font-bold tracking-wide">👷 Worker Attendance & OT System</h1>
+            </div>
+            
+            <!-- Navigation Tabs -->
+            <div class="flex bg-blue-800 p-1 rounded-lg text-sm font-medium">
+                <button id="tabBtnDaily" onclick="switchTab('daily')" class="px-4 py-2 rounded-md bg-white text-blue-800 font-semibold transition">
+                    📅 Daily Attendance
+                </button>
+                <button id="tabBtnHistory" onclick="switchTab('history')" class="px-4 py-2 rounded-md text-white hover:bg-blue-700 transition">
+                    📜 Attendance History
+                </button>
+                <button id="tabBtnDirectory" onclick="switchTab('directory')" class="px-4 py-2 rounded-md text-white hover:bg-blue-700 transition">
+                    👥 Worker Directory
+                </button>
+            </div>
+
+            <div class="text-sm bg-blue-800 px-3 py-1.5 rounded-md" id="liveClock">--:--:--</div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 sm:p-6">
+
+        <!-- TAB 1: DAILY ATTENDANCE (SCANNER & TODAY'S LOGS) -->
+        <div id="tabDailyView" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Left Column: Scanner & Settings -->
+            <div class="space-y-6 no-print">
+
+                <!-- Shift Settings Card -->
+                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        ⚙️ Shift Overtime Rule
+                    </h2>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Standard Shift Work (Hours)</label>
+                        <input type="number" id="shiftHours" value="8" min="1" max="24" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" onchange="recalculateAllOT()">
+                    </div>
+                    <p class="text-[11px] text-gray-500 mt-2 bg-amber-50 p-2 rounded border border-amber-200">
+                        ⚡ <strong>Note:</strong> OT is applied only if total hours worked exceeds shift time by <strong>30 minutes or more</strong> (e.g. &ge; 8.5 hours for an 8h shift).
+                    </p>
+                </div>
+
+                <!-- Barcode Scanner Card -->
+                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-700 mb-3">📷 Scan Worker ID</h2>
+                    
+                    <!-- USB Scanner / Manual Input Field -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Barcode Reader Input (Auto Entry)</label>
+                        <input type="text" id="barcodeInput" placeholder="Scan Barcode or Type ID & Enter..." 
+                            class="w-full border-2 border-blue-400 rounded-lg p-3 text-base focus:ring-2 focus:ring-blue-600 outline-none font-mono" autofocus>
+                        <p class="text-xs text-gray-400 mt-1">Plug-and-play USB barcode scanners automatically submit here.</p>
+                    </div>
+
+                    <!-- Camera Scanner Section -->
+                    <div class="border-t pt-4">
+                        <button id="toggleCameraBtn" onclick="toggleCameraScanner()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-medium py-2 rounded-lg transition text-sm flex items-center justify-center gap-2">
+                            <span>📹</span> Start / Stop Camera Scanner
+                        </button>
+                        <div id="reader" class="mt-3 overflow-hidden rounded-lg border border-gray-300 hidden"></div>
+                    </div>
+                </div>
+
+                <!-- Quick Add Worker & Print Barcode Form -->
+                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-700 mb-3">➕ Register New Worker</h2>
+                    <form id="addWorkerForm" onsubmit="registerWorker(event)" class="space-y-3">
+                        <div>
+                            <input type="text" id="newWorkerId" placeholder="Worker ID (Barcode)" required class="w-full border rounded-lg p-2 text-sm font-mono">
+                        </div>
+                        <div>
+                            <input type="text" id="newWorkerName" placeholder="Full Name" required class="w-full border rounded-lg p-2 text-sm">
+                        </div>
+                        <div>
+                            <input type="text" id="newWorkerDept" placeholder="Department (e.g. Production)" class="w-full border rounded-lg p-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Employment Category</label>
+                            <select id="newWorkerType" class="w-full border rounded-lg p-2 text-sm bg-white" onchange="toggleContractorInput()">
+                                <option value="Regular">Regular Employee</option>
+                                <option value="Contractor">Contractor / Agency Worker</option>
+                            </select>
+                        </div>
+                        <div id="agencyInputGroup" class="hidden">
+                            <input type="text" id="newWorkerAgency" placeholder="Contractor / Agency Name" class="w-full border rounded-lg p-2 text-sm bg-blue-50 border-blue-200">
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 rounded-lg transition">
+                            Save Worker & Generate Barcode
+                        </button>
+                    </form>
+
+                    <!-- Generated Barcode Preview Card -->
+                    <div id="barcodePreviewCard" class="hidden mt-4 pt-4 border-t border-gray-200 text-center">
+                        <p class="text-xs font-semibold text-gray-500 mb-2">LAST GENERATED BARCODE BADGE</p>
+                        <div class="bg-gray-50 p-3 rounded-lg border inline-block w-full">
+                            <p id="badgeName" class="font-bold text-sm text-gray-800"></p>
+                            <p id="badgeType" class="text-xs font-semibold text-blue-600"></p>
+                            <p id="badgeDept" class="text-xs text-gray-500 mb-2"></p>
+                            <svg id="previewBarcodeSvg" class="mx-auto"></svg>
+                        </div>
+                        <button onclick="printBarcodeBadge()" class="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2 rounded-lg transition flex items-center justify-center gap-1">
+                            🖨️ Print Barcode Badge
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Today's Attendance Records -->
+            <div class="lg:col-span-2 space-y-6">
+
+                <!-- Status Banner / Alert -->
+                <div id="scanAlert" class="hidden p-4 rounded-xl border font-medium text-sm transition-all duration-300"></div>
+
+                <!-- Main Today's Panel -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-4 no-print">
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-800">📋 Today's Attendance Logs</h2>
+                            <p class="text-xs text-gray-500" id="currentDateDisplay"></p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="exportToCSV(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition flex items-center gap-1">
+                                📥 Export Today CSV
+                            </button>
+                            <button onclick="window.print()" class="bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition flex items-center gap-1">
+                                🖨️ Print
+                            </button>
+                            <button onclick="clearTodayRecords()" class="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium px-3 py-2 rounded-lg transition border border-red-200">
+                                🗑️ Clear Today
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filter Strip -->
+                    <div class="p-3 bg-slate-50 border-b border-gray-200 flex flex-wrap gap-3 items-center text-xs no-print">
+                        <span class="font-semibold text-gray-600">Filter:</span>
+                        <select id="dailyFilterType" onchange="renderDailyTable()" class="border rounded px-2 py-1 bg-white">
+                            <option value="ALL">All Worker Types</option>
+                            <option value="Regular">Regular Only</option>
+                            <option value="Contractor">Contractors Only</option>
+                        </select>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div class="grid grid-cols-4 gap-2 p-4 bg-gray-50 border-b border-gray-200 text-center no-print">
+                        <div class="bg-white p-3 rounded-lg border">
+                            <span class="block text-xs text-gray-500">Present</span>
+                            <span class="text-lg font-bold text-blue-600" id="statPresent">0</span>
+                        </div>
+                        <div class="bg-white p-3 rounded-lg border">
+                            <span class="block text-xs text-gray-500">Contractors</span>
+                            <span class="text-lg font-bold text-amber-600" id="statContractors">0</span>
+                        </div>
+                        <div class="bg-white p-3 rounded-lg border">
+                            <span class="block text-xs text-gray-500">Completed Shift</span>
+                            <span class="text-lg font-bold text-emerald-600" id="statCompleted">0</span>
+                        </div>
+                        <div class="bg-white p-3 rounded-lg border">
+                            <span class="block text-xs text-gray-500">Total OT (Hrs)</span>
+                            <span class="text-lg font-bold text-purple-600" id="statTotalOT">0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Daily Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-100 text-gray-600 uppercase text-[11px] tracking-wider border-b">
+                                <tr>
+                                    <th class="py-3 px-4">Worker ID</th>
+                                    <th class="py-3 px-4">Name</th>
+                                    <th class="py-3 px-4">Type / Agency</th>
+                                    <th class="py-3 px-4">In Time</th>
+                                    <th class="py-3 px-4">Out Time</th>
+                                    <th class="py-3 px-4">Total Hrs</th>
+                                    <th class="py-3 px-4">OT (Hrs)</th>
+                                    <th class="py-3 px-4">Status</th>
+                                    <th class="py-3 px-4 text-right no-print">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dailyTableBody" class="divide-y divide-gray-200 font-mono text-xs">
+                                <!-- Dynamic Content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- TAB 2: ATTENDANCE HISTORY & LOGS -->
+        <div id="tabHistoryView" class="hidden space-y-6">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-800">📜 All Attendance History Logs</h2>
+                        <p class="text-xs text-gray-500">View, search, and export historical worker punches across all dates.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="exportToCSV(false)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition flex items-center gap-1">
+                            📥 Export Filtered CSV
+                        </button>
+                        <button onclick="clearAllRecords()" class="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium px-3 py-2 rounded-lg transition border border-red-200">
+                            🗑️ Clear All Logs
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search & Filters Strip -->
+                <div class="p-4 bg-slate-50 border-b border-gray-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                    <div>
+                        <label class="block text-gray-500 mb-1 font-medium">Filter by Date</label>
+                        <input type="date" id="historyFilterDate" onchange="renderHistoryTable()" class="w-full border rounded px-3 py-2 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-gray-500 mb-1 font-medium">Search Worker (Name / ID)</label>
+                        <input type="text" id="historySearchQuery" oninput="renderHistoryTable()" placeholder="Type to search..." class="w-full border rounded px-3 py-2 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-gray-500 mb-1 font-medium">Worker Type</label>
+                        <select id="historyFilterType" onchange="renderHistoryTable()" class="w-full border rounded px-3 py-2 bg-white">
+                            <option value="ALL">All Worker Types</option>
+                            <option value="Regular">Regular Employee</option>
+                            <option value="Contractor">Contractor / Agency</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-500 mb-1 font-medium">Department</label>
+                        <select id="historyFilterDept" onchange="renderHistoryTable()" class="w-full border rounded px-3 py-2 bg-white">
+                            <option value="ALL">All Departments</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- History Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-600 uppercase text-[11px] tracking-wider border-b">
+                            <tr>
+                                <th class="py-3 px-4">Date</th>
+                                <th class="py-3 px-4">Worker ID</th>
+                                <th class="py-3 px-4">Name</th>
+                                <th class="py-3 px-4">Type / Agency</th>
+                                <th class="py-3 px-4">In Time</th>
+                                <th class="py-3 px-4">Out Time</th>
+                                <th class="py-3 px-4">Total Hrs</th>
+                                <th class="py-3 px-4">OT (Hrs)</th>
+                                <th class="py-3 px-4">Status</th>
+                                <th class="py-3 px-4 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="divide-y divide-gray-200 font-mono text-xs">
+                            <!-- Dynamic Content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: WORKER DIRECTORY & DETAILS -->
+        <div id="tabDirectoryView" class="hidden space-y-6">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-800">👥 Master Worker Directory</h2>
+                        <p class="text-xs text-gray-500">View worker details, filter profiles, and reprint barcode badges.</p>
+                    </div>
+                    <span id="directoryTotalBadge" class="bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full font-semibold">Total: 0 Workers</span>
+                </div>
+
+                <!-- Search & Filters Strip -->
+                <div class="p-4 bg-slate-50 border-b border-gray-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div>
+                        <label class="block text-gray-500 mb-1 font-medium">Search Worker (Name / ID)</label>
+                        <input type="text" id="directorySearchQuery" oninput="renderDirectoryTable()" placeholder="Search by name or ID..." class="w-full border rounded px-3 py-2 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-gray-500 mb-1 font-medium">Filter Category</label>
+                        <select id="directoryFilterType" onchange="renderDirectoryTable()" class="w-full border rounded px-3 py-2 bg-white">
+                            <option value="ALL">All Categories</option>
+                            <option value="Regular">Regular Employees</option>
+                            <option value="Contractor">Contractors Only</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-500 mb-1 font-medium">Filter Department</label>
+                        <select id="directoryFilterDept" onchange="renderDirectoryTable()" class="w-full border rounded px-3 py-2 bg-white">
+                            <option value="ALL">All Departments</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Directory Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-600 uppercase text-[11px] tracking-wider border-b">
+                            <tr>
+                                <th class="py-3 px-4">Worker ID</th>
+                                <th class="py-3 px-4">Full Name</th>
+                                <th class="py-3 px-4">Category</th>
+                                <th class="py-3 px-4">Agency / Company</th>
+                                <th class="py-3 px-4">Department</th>
+                                <th class="py-3 px-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="directoryTableBody" class="divide-y divide-gray-200 text-xs">
+                            <!-- Dynamic Directory Content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- JavaScript Logic -->
+    <script>
+        let workers = JSON.parse(localStorage.getItem('workersDirectory')) || {
+            "W101": { name: "Rajesh Kumar", dept: "Assembly", type: "Regular", agency: "-" },
+            "W102": { name: "Amit Sharma", dept: "Quality", type: "Regular", agency: "-" },
+            "W103": { name: "Suresh Patil", dept: "Packaging", type: "Contractor", agency: "Apex Manpower" }
+        };
+
+        let attendanceLogs = JSON.parse(localStorage.getItem('attendanceLogs')) || [];
+        let html5QrcodeScanner = null;
+        let activeBadgeWorker = null;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById('currentDateDisplay').innerText = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+            updateClock();
+            setInterval(updateClock, 1000);
+            
+            populateDepartmentDropdowns();
+            renderDailyTable();
+
+            const barcodeInput = document.getElementById('barcodeInput');
+            if (barcodeInput) barcodeInput.focus();
+
+            barcodeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const code = barcodeInput.value.trim();
+                    if (code) {
+                        handleBarcodeScan(code);
+                        barcodeInput.value = '';
+                    }
+                }
+            });
+        });
+
+        function updateClock() {
+            document.getElementById('liveClock').innerText = new Date().toLocaleTimeString('en-IN');
+        }
+
+        function switchTab(tab) {
+            document.getElementById('tabDailyView').classList.add('hidden');
+            document.getElementById('tabHistoryView').classList.add('hidden');
+            document.getElementById('tabDirectoryView').classList.add('hidden');
+
+            document.getElementById('tabBtnDaily').className = "px-4 py-2 rounded-md text-white hover:bg-blue-700 transition";
+            document.getElementById('tabBtnHistory').className = "px-4 py-2 rounded-md text-white hover:bg-blue-700 transition";
+            document.getElementById('tabBtnDirectory').className = "px-4 py-2 rounded-md text-white hover:bg-blue-700 transition";
+
+            if (tab === 'daily') {
+                document.getElementById('tabDailyView').classList.remove('hidden');
+                document.getElementById('tabBtnDaily').className = "px-4 py-2 rounded-md bg-white text-blue-800 font-semibold transition";
+                renderDailyTable();
+            } else if (tab === 'history') {
+                document.getElementById('tabHistoryView').classList.remove('hidden');
+                document.getElementById('tabBtnHistory').className = "px-4 py-2 rounded-md bg-white text-blue-800 font-semibold transition";
+                renderHistoryTable();
+            } else if (tab === 'directory') {
+                document.getElementById('tabDirectoryView').classList.remove('hidden');
+                document.getElementById('tabBtnDirectory').className = "px-4 py-2 rounded-md bg-white text-blue-800 font-semibold transition";
+                renderDirectoryTable();
+            }
+        }
+
+        function toggleContractorInput() {
+            const type = document.getElementById('newWorkerType').value;
+            const agencyGroup = document.getElementById('agencyInputGroup');
+            if (type === 'Contractor') {
+                agencyGroup.classList.remove('hidden');
+            } else {
+                agencyGroup.classList.add('hidden');
+            }
+        }
+
+        function registerWorker(e) {
+            e.preventDefault();
+            const id = document.getElementById('newWorkerId').value.trim();
+            const name = document.getElementById('newWorkerName').value.trim();
+            const dept = document.getElementById('newWorkerDept').value.trim() || 'General';
+            const type = document.getElementById('newWorkerType').value;
+            const agency = type === 'Contractor' ? (document.getElementById('newWorkerAgency').value.trim() || 'Independent') : '-';
+
+            if (!id || !name) return;
+
+            workers[id] = { name, dept, type, agency };
+            localStorage.setItem('workersDirectory', JSON.stringify(workers));
+            populateDepartmentDropdowns();
+            
+            // Generate Badge
+            generateBarcodeBadge(id, name, dept, type, agency);
+
+            showAlert(`Worker ${name} (${id}) added successfully! Ready to print badge.`, 'bg-green-100 border-green-400 text-green-700');
+            document.getElementById('addWorkerForm').reset();
+            document.getElementById('agencyInputGroup').classList.add('hidden');
+        }
+
+        function generateBarcodeBadge(id, name, dept, type, agency) {
+            activeBadgeWorker = { id, name, dept, type, agency };
+
+            JsBarcode("#previewBarcodeSvg", id, { format: "CODE128", width: 1.8, height: 50, fontSize: 14 });
+            JsBarcode("#printBarcodeSvg", id, { format: "CODE128", width: 2, height: 70, fontSize: 16 });
+
+            document.getElementById('badgeName').innerText = name;
+            document.getElementById('badgeType').innerText = type === 'Contractor' ? `Contractor (${agency})` : 'Regular Employee';
+            document.getElementById('badgeDept').innerText = `Dept: ${dept}`;
+
+            document.getElementById('printWorkerName').innerText = name;
+            document.getElementById('printWorkerType').innerText = type === 'Contractor' ? `Contractor - ${agency}` : 'Regular Employee';
+            document.getElementById('printWorkerDept').innerText = `Department: ${dept}`;
+
+            document.getElementById('barcodePreviewCard').classList.remove('hidden');
+        }
+
+        function printBarcodeBadge() {
+            if (!activeBadgeWorker) return;
+            window.print();
+        }
+
+        function reprintWorkerBadge(id) {
+            const worker = workers[id];
+            if (!worker) return;
+            switchTab('daily');
+            generateBarcodeBadge(id, worker.name, worker.dept, worker.type || 'Regular', worker.agency || '-');
+            window.scrollTo({ top: document.getElementById('barcodePreviewCard').offsetTop - 20, behavior: 'smooth' });
+        }
+
+        function deleteWorkerProfile(id) {
+            if (confirm(`Are you sure you want to remove ${workers[id]?.name || id} from directory?`)) {
+                delete workers[id];
+                localStorage.setItem('workersDirectory', JSON.stringify(workers));
+                populateDepartmentDropdowns();
+                renderDirectoryTable();
+            }
+        }
+
+        function handleBarcodeScan(scannedId) {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-IN', { hour12: false });
+            
+            let worker = workers[scannedId];
+            let name = worker ? worker.name : `Worker (${scannedId})`;
+            let type = worker ? (worker.type || 'Regular') : 'Regular';
+            let agency = worker ? (worker.agency || '-') : '-';
+
+            let record = attendanceLogs.find(r => r.id === scannedId && r.date === todayStr && !r.outTime);
+
+            if (!record) {
+                let finishedRecord = attendanceLogs.find(r => r.id === scannedId && r.date === todayStr && r.outTime);
+                if (finishedRecord) {
+                    showAlert(`⚠️ ${name} has already logged OUT for today.`, 'bg-yellow-100 border-yellow-400 text-yellow-800');
+                    return;
+                }
+
+                const newRecord = {
+                    id: scannedId,
+                    name: name,
+                    type: type,
+                    agency: agency,
+                    date: todayStr,
+                    inTime: timeStr,
+                    outTime: null,
+                    totalHours: 0,
+                    otHours: 0,
+                    status: 'IN',
+                    manualOT: false
+                };
+                attendanceLogs.push(newRecord);
+                showAlert(`✅ IN PUNCH: ${name} checked in at ${timeStr}`, 'bg-blue-100 border-blue-400 text-blue-800');
+            } else {
+                record.outTime = timeStr;
+                record.status = 'COMPLETED';
+
+                calculateOvertime(record);
+                showAlert(`🔴 OUT PUNCH: ${name} checked out at ${timeStr}. OT: ${record.otHours} hrs`, 'bg-purple-100 border-purple-400 text-purple-800');
+            }
+
+            localStorage.setItem('attendanceLogs', JSON.stringify(attendanceLogs));
+            renderDailyTable();
+        }
+
+        function calculateOvertime(record) {
+            if (record.manualOT) return; // Keep manual override if present
+
+            const shiftHrs = parseFloat(document.getElementById('shiftHours').value) || 8;
+
+            const [inH, inM, inS] = record.inTime.split(':').map(Number);
+            const [outH, outM, outS] = record.outTime.split(':').map(Number);
+
+            let inDate = new Date(2000, 0, 1, inH, inM, inS);
+            let outDate = new Date(2000, 0, 1, outH, outM, outS);
+
+            if (outDate < inDate) {
+                outDate.setDate(outDate.getDate() + 1);
+            }
+
+            let diffMs = outDate - inDate;
+            let totalHours = Math.max(0, diffMs / (1000 * 60 * 60));
+
+            // OT Rule: Calculate OT above shift hours ONLY if worked >= 30 mins over shift
+            let otHours = 0;
+            if (totalHours >= (shiftHrs + 0.5)) {
+                otHours = totalHours - shiftHrs;
+            }
+
+            record.totalHours = totalHours.toFixed(2);
+            record.otHours = otHours.toFixed(2);
+        }
+
+        function recalculateAllOT() {
+            attendanceLogs.forEach(record => {
+                if (record.outTime && !record.manualOT) {
+                    calculateOvertime(record);
+                }
+            });
+            localStorage.setItem('attendanceLogs', JSON.stringify(attendanceLogs));
+            renderDailyTable();
+            renderHistoryTable();
+        }
+
+        function editManualOT(index) {
+            let record = attendanceLogs[index];
+            if (!record) return;
+
+            let newOT = prompt(`Enter manual Overtime hours for ${record.name} (Current: ${record.otHours} hrs):`, record.otHours);
+            if (newOT !== null) {
+                let parsedOT = parseFloat(newOT);
+                if (!isNaN(parsedOT) && parsedOT >= 0) {
+                    record.otHours = parsedOT.toFixed(2);
+                    record.manualOT = true;
+                    localStorage.setItem('attendanceLogs', JSON.stringify(attendanceLogs));
+                    renderDailyTable();
+                    renderHistoryTable();
+                    showAlert(`✏️ Manual OT updated to ${record.otHours} hrs for ${record.name}`, 'bg-blue-100 border-blue-400 text-blue-800');
+                } else {
+                    alert("Invalid overtime value. Please enter a positive number.");
+                }
+            }
+        }
+
+        function resetManualOT(index) {
+            let record = attendanceLogs[index];
+            if (!record) return;
+            record.manualOT = false;
+            calculateOvertime(record);
+            localStorage.setItem('attendanceLogs', JSON.stringify(attendanceLogs));
+            renderDailyTable();
+            renderHistoryTable();
+        }
+
+        function renderDailyTable() {
+            const tbody = document.getElementById('dailyTableBody');
+            const todayStr = new Date().toISOString().split('T')[0];
+            const filterType = document.getElementById('dailyFilterType').value;
+
+            let todayLogs = attendanceLogs.filter(r => r.date === todayStr);
+
+            if (filterType !== 'ALL') {
+                todayLogs = todayLogs.filter(r => (r.type || 'Regular') === filterType);
+            }
+
+            tbody.innerHTML = '';
+            
+            let presentCount = 0;
+            let contractorCount = 0;
+            let completedCount = 0;
+            let totalOT = 0;
+
+            const allTodayLogs = attendanceLogs.filter(r => r.date === todayStr);
+            allTodayLogs.forEach(r => {
+                presentCount++;
+                if (r.type === 'Contractor') contractorCount++;
+                if (r.status === 'COMPLETED') completedCount++;
+                totalOT += parseFloat(r.otHours || 0);
+            });
+
+            if (todayLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-gray-400">No attendance records found for today matching filter. Scan barcode to check-in.</td></tr>`;
+            } else {
+                todayLogs.forEach((r) => {
+                    let globalIndex = attendanceLogs.indexOf(r);
+                    let typeBadge = r.type === 'Contractor'
+                        ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold text-[10px]">Contractor (${r.agency || 'Independent'})</span>`
+                        : `<span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-semibold text-[10px]">Regular</span>`;
+
+                    let statusBadge = r.status === 'IN' 
+                        ? `<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-semibold text-[10px]">PUNCHED IN</span>`
+                        : `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-semibold text-[10px]">COMPLETED</span>`;
+
+                    let otDisplay = parseFloat(r.otHours) > 0 
+                        ? `<span class="text-red-600 font-bold">${r.otHours} ${r.manualOT ? '✏️' : ''}</span>`
+                        : `<span class="text-gray-500">${r.otHours || '0.00'}</span>`;
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-gray-50 border-b">
+                            <td class="py-3 px-4 font-bold text-gray-700">${r.id}</td>
+                            <td class="py-3 px-4 font-sans text-gray-900">${r.name}</td>
+                            <td class="py-3 px-4">${typeBadge}</td>
+                            <td class="py-3 px-4 text-emerald-700">${r.inTime}</td>
+                            <td class="py-3 px-4 text-purple-700">${r.outTime || '--:--'}</td>
+                            <td class="py-3 px-4 font-bold">${r.totalHours || '0.00'}</td>
+                            <td class="py-3 px-4 font-bold">${otDisplay}</td>
+                            <td class="py-3 px-4">${statusBadge}</td>
+                            <td class="py-3 px-4 text-right no-print">
+                                <button onclick="editManualOT(${globalIndex})" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold underline bg-blue-50 px-2 py-1 rounded border border-blue-200">✏️ Edit OT</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById('statPresent').innerText = presentCount;
+            document.getElementById('statContractors').innerText = contractorCount;
+            document.getElementById('statCompleted').innerText = completedCount;
+            document.getElementById('statTotalOT').innerText = totalOT.toFixed(2);
+        }
+
+        function renderHistoryTable() {
+            const tbody = document.getElementById('historyTableBody');
+            const filterDate = document.getElementById('historyFilterDate').value;
+            const searchQuery = document.getElementById('historySearchQuery').value.toLowerCase().trim();
+            const filterType = document.getElementById('historyFilterType').value;
+            const filterDept = document.getElementById('historyFilterDept').value;
+
+            let filteredLogs = [...attendanceLogs];
+
+            if (filterDate) {
+                filteredLogs = filteredLogs.filter(r => r.date === filterDate);
+            }
+            if (searchQuery) {
+                filteredLogs = filteredLogs.filter(r => r.name.toLowerCase().includes(searchQuery) || r.id.toLowerCase().includes(searchQuery));
+            }
+            if (filterType !== 'ALL') {
+                filteredLogs = filteredLogs.filter(r => (r.type || 'Regular') === filterType);
+            }
+            if (filterDept !== 'ALL') {
+                filteredLogs = filteredLogs.filter(r => {
+                    let w = workers[r.id];
+                    return w && w.dept === filterDept;
+                });
+            }
+
+            tbody.innerHTML = '';
+
+            if (filteredLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="py-6 text-center text-gray-400">No history records found matching search filters.</td></tr>`;
+            } else {
+                filteredLogs.reverse().forEach((r) => {
+                    let globalIndex = attendanceLogs.indexOf(r);
+                    let typeBadge = r.type === 'Contractor'
+                        ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold text-[10px]">Contractor (${r.agency || 'Independent'})</span>`
+                        : `<span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-semibold text-[10px]">Regular</span>`;
+
+                    let statusBadge = r.status === 'IN' 
+                        ? `<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-semibold text-[10px]">PUNCHED IN</span>`
+                        : `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-semibold text-[10px]">COMPLETED</span>`;
+
+                    let otDisplay = parseFloat(r.otHours) > 0 
+                        ? `<span class="text-red-600 font-bold">${r.otHours} ${r.manualOT ? '✏️' : ''}</span>`
+                        : `<span class="text-gray-500">${r.otHours || '0.00'}</span>`;
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-gray-50 border-b">
+                            <td class="py-3 px-4 font-semibold text-gray-600">${r.date}</td>
+                            <td class="py-3 px-4 font-bold text-gray-700">${r.id}</td>
+                            <td class="py-3 px-4 font-sans text-gray-900">${r.name}</td>
+                            <td class="py-3 px-4">${typeBadge}</td>
+                            <td class="py-3 px-4 text-emerald-700">${r.inTime}</td>
+                            <td class="py-3 px-4 text-purple-700">${r.outTime || '--:--'}</td>
+                            <td class="py-3 px-4 font-bold">${r.totalHours || '0.00'}</td>
+                            <td class="py-3 px-4 font-bold">${otDisplay}</td>
+                            <td class="py-3 px-4">${statusBadge}</td>
+                            <td class="py-3 px-4 text-right">
+                                <button onclick="editManualOT(${globalIndex})" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold underline bg-blue-50 px-2 py-1 rounded border border-blue-200">✏️ Edit OT</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        function renderDirectoryTable() {
+            const tbody = document.getElementById('directoryTableBody');
+            const searchQuery = document.getElementById('directorySearchQuery').value.toLowerCase().trim();
+            const filterType = document.getElementById('directoryFilterType').value;
+            const filterDept = document.getElementById('directoryFilterDept').value;
+
+            let workerIds = Object.keys(workers);
+            let filteredIds = workerIds.filter(id => {
+                let w = workers[id];
+                let matchesSearch = w.name.toLowerCase().includes(searchQuery) || id.toLowerCase().includes(searchQuery);
+                let matchesType = filterType === 'ALL' || (w.type || 'Regular') === filterType;
+                let matchesDept = filterDept === 'ALL' || w.dept === filterDept;
+                return matchesSearch && matchesType && matchesDept;
+            });
+
+            document.getElementById('directoryTotalBadge').innerText = `Total: ${filteredIds.length} Workers`;
+            tbody.innerHTML = '';
+
+            if (filteredIds.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-gray-400">No workers found matching directory filters.</td></tr>`;
+            } else {
+                filteredIds.forEach(id => {
+                    let w = workers[id];
+                    let typeBadge = w.type === 'Contractor'
+                        ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold text-[10px]">Contractor</span>`
+                        : `<span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-semibold text-[10px]">Regular Employee</span>`;
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-gray-50 border-b">
+                            <td class="py-3 px-4 font-bold font-mono text-gray-800">${id}</td>
+                            <td class="py-3 px-4 font-semibold text-gray-900">${w.name}</td>
+                            <td class="py-3 px-4">${typeBadge}</td>
+                            <td class="py-3 px-4 text-gray-600">${w.agency || '-'}</td>
+                            <td class="py-3 px-4 text-gray-600">${w.dept || 'General'}</td>
+                            <td class="py-3 px-4 text-right flex justify-end gap-2">
+                                <button onclick="reprintWorkerBadge('${id}')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 text-xs px-2.5 py-1 rounded font-medium transition">
+                                    🖨️ Reprint Badge
+                                </button>
+                                <button onclick="deleteWorkerProfile('${id}')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs px-2 py-1 rounded transition">
+                                    🗑️ Delete
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        function populateDepartmentDropdowns() {
+            const depts = new Set();
+            Object.values(workers).forEach(w => {
+                if (w.dept) depts.add(w.dept);
+            });
+
+            const histSelect = document.getElementById('historyFilterDept');
+            const dirSelect = document.getElementById('directoryFilterDept');
+
+            histSelect.innerHTML = '<option value="ALL">All Departments</option>';
+            dirSelect.innerHTML = '<option value="ALL">All Departments</option>';
+
+            depts.forEach(dept => {
+                histSelect.innerHTML += `<option value="${dept}">${dept}</option>`;
+                dirSelect.innerHTML += `<option value="${dept}">${dept}</option>`;
+            });
+        }
+
+        function showAlert(msg, colorClass) {
+            const alertBox = document.getElementById('scanAlert');
+            alertBox.className = `p-4 rounded-xl border font-medium text-sm transition-all duration-300 ${colorClass}`;
+            alertBox.innerText = msg;
+            alertBox.classList.remove('hidden');
+
+            setTimeout(() => {
+                alertBox.classList.add('hidden');
+            }, 4000);
+        }
+
+        function toggleCameraScanner() {
+            const readerElement = document.getElementById('reader');
+            if (readerElement.classList.contains('hidden')) {
+                readerElement.classList.remove('hidden');
+                html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 150 } });
+                html5QrcodeScanner.render((decodedText) => {
+                    handleBarcodeScan(decodedText);
+                }, (error) => {});
+            } else {
+                if (html5QrcodeScanner) {
+                    html5QrcodeScanner.clear().then(() => {
+                        readerElement.classList.add('hidden');
+                    });
+                } else {
+                    readerElement.classList.add('hidden');
+                }
+            }
+        }
+
+        function exportToCSV(todayOnly = false) {
+            let logsToExport = attendanceLogs;
+            
+            if (todayOnly) {
+                const todayStr = new Date().toISOString().split('T')[0];
+                logsToExport = attendanceLogs.filter(r => r.date === todayStr);
+            } else {
+                const filterDate = document.getElementById('historyFilterDate').value;
+                const searchQuery = document.getElementById('historySearchQuery').value.toLowerCase().trim();
+                const filterType = document.getElementById('historyFilterType').value;
+                const filterDept = document.getElementById('historyFilterDept').value;
+
+                if (filterDate) logsToExport = logsToExport.filter(r => r.date === filterDate);
+                if (searchQuery) logsToExport = logsToExport.filter(r => r.name.toLowerCase().includes(searchQuery) || r.id.toLowerCase().includes(searchQuery));
+                if (filterType !== 'ALL') logsToExport = logsToExport.filter(r => (r.type || 'Regular') === filterType);
+                if (filterDept !== 'ALL') {
+                    logsToExport = logsToExport.filter(r => workers[r.id] && workers[r.id].dept === filterDept);
+                }
+            }
+
+            if (logsToExport.length === 0) {
+                alert("No records available to export!");
+                return;
+            }
+
+            let csv = "Date,Worker ID,Name,Type,Agency,In Time,Out Time,Total Hours,Overtime Hours,Manual OT Override,Status\n";
+            logsToExport.forEach(r => {
+                csv += `"${r.date}","${r.id}","${r.name}","${r.type || 'Regular'}","${r.agency || '-'}","${r.inTime}","${r.outTime || ''}","${r.totalHours}","${r.otHours}","${r.manualOT ? 'YES' : 'NO'}","${r.status}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", `Worker_Attendance_${todayOnly ? 'Today' : 'Export'}_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function clearTodayRecords() {
+            if (confirm("Are you sure you want to clear today's attendance logs?")) {
+                const todayStr = new Date().toISOString().split('T')[0];
+                attendanceLogs = attendanceLogs.filter(r => r.date !== todayStr);
+                localStorage.setItem('attendanceLogs', JSON.stringify(attendanceLogs));
+                renderDailyTable();
+            }
+        }
+
+        function clearAllRecords() {
+            if (confirm("Are you sure you want to permanently clear ALL historical attendance logs?")) {
+                attendanceLogs = [];
+                localStorage.setItem('attendanceLogs', JSON.stringify(attendanceLogs));
+                renderDailyTable();
+                renderHistoryTable();
+            }
+        }
+    </script>
+</body>
+</html>
