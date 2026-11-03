@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Worker Attendance & Overtime Tracker</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,11 +17,14 @@
             body { background: white; }
         }
         .print-only { display: none; }
+        /* Smooth touch scrolling for horizontal sub-nav */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans min-h-screen">
+<body class="bg-slate-100 text-gray-800 font-sans min-h-screen pb-10">
 
-    <!-- Printable Barcode Section -->
+    <!-- Printable Barcode Badge Section -->
     <div id="printBadgeArea" class="print-only p-8 text-center border-2 border-black max-w-xs mx-auto mt-10 rounded">
         <h2 id="printWorkerName" class="text-xl font-bold uppercase mb-1"></h2>
         <p id="printWorkerType" class="text-xs font-semibold text-blue-600 mb-1"></p>
@@ -31,40 +34,41 @@
     </div>
 
     <!-- Header -->
-    <header class="bg-blue-700 text-white shadow-md no-print">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-4">
-            <div class="flex items-center gap-3">
-                <h1 class="text-2xl font-bold tracking-wide">👷 Worker Attendance & OT System</h1>
+    <header class="bg-blue-700 text-white shadow-md sticky top-0 z-30 no-print">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center gap-2">
+                <h1 class="text-lg sm:text-2xl font-bold tracking-wide">👷 Worker Attendance & OT</h1>
             </div>
-            
-            <!-- Navigation Tabs -->
-            <div class="flex bg-blue-800 p-1 rounded-lg text-sm font-medium">
-                <button id="tabBtnDaily" onclick="switchTab('daily')" class="px-4 py-2 rounded-md bg-white text-blue-800 font-semibold transition">
-                    📅 Daily Attendance
+            <div class="text-xs sm:text-sm bg-blue-800 px-3 py-1 rounded-md font-mono" id="liveClock">--:--:--</div>
+        </div>
+
+        <!-- Mobile Scrollable Navigation Tabs -->
+        <div class="bg-blue-800 px-4 py-2 border-t border-blue-600">
+            <div class="max-w-7xl mx-auto flex gap-2 overflow-x-auto no-scrollbar text-xs sm:text-sm font-medium">
+                <button id="tabBtnDaily" onclick="switchTab('daily')" class="px-3 py-2 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition">
+                    📅 Daily Punch Log
                 </button>
-                <button id="tabBtnHistory" onclick="switchTab('history')" class="px-4 py-2 rounded-md text-white hover:bg-blue-700 transition">
-                    📜 Attendance History
+                <button id="tabBtnHistory" onclick="switchTab('history')" class="px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition">
+                    📜 History Logs
                 </button>
-                <button id="tabBtnDirectory" onclick="switchTab('directory')" class="px-4 py-2 rounded-md text-white hover:bg-blue-700 transition">
+                <button id="tabBtnDirectory" onclick="switchTab('directory')" class="px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition">
                     👥 Worker Directory
                 </button>
             </div>
-
-            <div class="text-sm bg-blue-800 px-3 py-1.5 rounded-md" id="liveClock">--:--:--</div>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto p-4 sm:p-6">
+    <main class="max-w-7xl mx-auto p-3 sm:p-6">
 
-        <!-- TAB 1: DAILY ATTENDANCE (SCANNER & TODAY'S LOGS) -->
-        <div id="tabDailyView" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- TAB 1: DAILY ATTENDANCE (CURRENT DATE ONLY) -->
+        <div id="tabDailyView" class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
 
             <!-- Left Column: Scanner & Settings -->
-            <div class="space-y-6 no-print">
+            <div class="space-y-4 sm:space-y-6 no-print">
 
                 <!-- Shift Settings Card -->
-                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <div class="bg-white rounded-xl shadow-sm p-4 sm:p-5 border border-gray-200">
+                    <h2 class="text-base sm:text-lg font-semibold text-gray-700 mb-2 flex items-center gap-2">
                         ⚙️ Shift Overtime Rule
                     </h2>
                     <div>
@@ -72,69 +76,67 @@
                         <input type="number" id="shiftHours" value="8" min="1" max="24" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" onchange="recalculateAllOT()">
                     </div>
                     <p class="text-[11px] text-gray-500 mt-2 bg-amber-50 p-2 rounded border border-amber-200">
-                        ⚡ <strong>Note:</strong> OT is applied only if total hours worked exceeds shift time by <strong>30 minutes or more</strong> (e.g. &ge; 8.5 hours for an 8h shift).
+                        ⚡ <strong>Rule:</strong> OT applies only if total hours worked exceeds shift time by <strong>30 minutes or more</strong> (&ge; 8.5h for an 8h shift).
                     </p>
                 </div>
 
                 <!-- Barcode Scanner Card -->
-                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-700 mb-3">📷 Scan Worker ID</h2>
+                <div class="bg-white rounded-xl shadow-sm p-4 sm:p-5 border border-gray-200">
+                    <h2 class="text-base sm:text-lg font-semibold text-gray-700 mb-2">📷 Scan Worker ID</h2>
                     
-                    <!-- USB Scanner / Manual Input Field -->
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <label class="block text-xs font-medium text-gray-500 mb-1">Barcode Reader Input (Auto Entry)</label>
-                        <input type="text" id="barcodeInput" placeholder="Scan Barcode or Type ID & Enter..." 
+                        <input type="text" id="barcodeInput" placeholder="Tap here to scan..." 
                             class="w-full border-2 border-blue-400 rounded-lg p-3 text-base focus:ring-2 focus:ring-blue-600 outline-none font-mono" autofocus>
-                        <p class="text-xs text-gray-400 mt-1">Plug-and-play USB barcode scanners automatically submit here. 5-minute duplicate scan cooldown active.</p>
+                        <p class="text-[11px] text-gray-400 mt-1">Plug-and-play USB scanner or screen keyboard. 5-min duplicate scan lock active.</p>
                     </div>
 
-                    <!-- Camera Scanner Section -->
-                    <div class="border-t pt-4">
-                        <button id="toggleCameraBtn" onclick="toggleCameraScanner()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-medium py-2 rounded-lg transition text-sm flex items-center justify-center gap-2">
+                    <div class="border-t pt-3">
+                        <button id="toggleCameraBtn" onclick="toggleCameraScanner()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-medium py-2.5 rounded-lg transition text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-[0.98]">
                             <span>📹</span> Start / Stop Camera Scanner
                         </button>
                         <div id="reader" class="mt-3 overflow-hidden rounded-lg border border-gray-300 hidden"></div>
                     </div>
                 </div>
 
-                <!-- Quick Add Worker & Print Barcode Form -->
-                <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-700 mb-3">➕ Register New Worker</h2>
+                <!-- Register Worker Form -->
+                <div class="bg-white rounded-xl shadow-sm p-4 sm:p-5 border border-gray-200">
+                    <h2 class="text-base sm:text-lg font-semibold text-gray-700 mb-2">➕ Register New Worker</h2>
                     <form id="addWorkerForm" onsubmit="registerWorker(event)" class="space-y-3">
                         <div>
-                            <input type="text" id="newWorkerId" placeholder="Worker ID (Barcode)" required class="w-full border rounded-lg p-2 text-sm font-mono">
+                            <input type="text" id="newWorkerId" placeholder="Worker ID (Barcode)" required class="w-full border rounded-lg p-2.5 text-sm font-mono">
                         </div>
                         <div>
-                            <input type="text" id="newWorkerName" placeholder="Full Name" required class="w-full border rounded-lg p-2 text-sm">
+                            <input type="text" id="newWorkerName" placeholder="Full Name" required class="w-full border rounded-lg p-2.5 text-sm">
                         </div>
                         <div>
-                            <input type="text" id="newWorkerDept" placeholder="Department (e.g. Production)" class="w-full border rounded-lg p-2 text-sm">
+                            <input type="text" id="newWorkerDept" placeholder="Department (e.g. Production)" class="w-full border rounded-lg p-2.5 text-sm">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-500 mb-1">Employment Category</label>
-                            <select id="newWorkerType" class="w-full border rounded-lg p-2 text-sm bg-white" onchange="toggleContractorInput()">
+                            <select id="newWorkerType" class="w-full border rounded-lg p-2.5 text-sm bg-white" onchange="toggleContractorInput()">
                                 <option value="Regular">Regular Employee</option>
                                 <option value="Contractor">Contractor / Agency Worker</option>
                             </select>
                         </div>
                         <div id="agencyInputGroup" class="hidden">
-                            <input type="text" id="newWorkerAgency" placeholder="Contractor / Agency Name" class="w-full border rounded-lg p-2 text-sm bg-blue-50 border-blue-200">
+                            <input type="text" id="newWorkerAgency" placeholder="Contractor / Agency Name" class="w-full border rounded-lg p-2.5 text-sm bg-amber-50 border-amber-200">
                         </div>
-                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 rounded-lg transition">
-                            Save Worker & Generate Barcode
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2.5 rounded-lg transition active:scale-[0.98]">
+                            Save Worker & Generate Badge
                         </button>
                     </form>
 
-                    <!-- Generated Barcode Preview Card -->
+                    <!-- Preview Badge Card -->
                     <div id="barcodePreviewCard" class="hidden mt-4 pt-4 border-t border-gray-200 text-center">
-                        <p class="text-xs font-semibold text-gray-500 mb-2">LAST GENERATED BARCODE BADGE</p>
+                        <p class="text-[11px] font-semibold text-gray-500 mb-2">LAST GENERATED BARCODE BADGE</p>
                         <div class="bg-gray-50 p-3 rounded-lg border inline-block w-full">
                             <p id="badgeName" class="font-bold text-sm text-gray-800"></p>
                             <p id="badgeType" class="text-xs font-semibold text-blue-600"></p>
                             <p id="badgeDept" class="text-xs text-gray-500 mb-2"></p>
-                            <svg id="previewBarcodeSvg" class="mx-auto"></svg>
+                            <svg id="previewBarcodeSvg" class="mx-auto max-w-full"></svg>
                         </div>
-                        <button onclick="printBarcodeBadge()" class="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2 rounded-lg transition flex items-center justify-center gap-1">
+                        <button onclick="printBarcodeBadge()" class="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-1 active:scale-[0.98]">
                             🖨️ Print Barcode Badge
                         </button>
                     </div>
@@ -142,64 +144,64 @@
 
             </div>
 
-            <!-- Right Column: Today's Attendance Records -->
-            <div class="lg:col-span-2 space-y-6">
+            <!-- Right Column: Today's Logs View -->
+            <div class="lg:col-span-2 space-y-4 sm:space-y-6">
 
-                <!-- Status Banner / Alert -->
-                <div id="scanAlert" class="hidden p-4 rounded-xl border font-medium text-sm transition-all duration-300"></div>
+                <!-- Alert Message Banner -->
+                <div id="scanAlert" class="hidden p-3 sm:p-4 rounded-xl border font-medium text-xs sm:text-sm transition-all duration-300"></div>
 
-                <!-- Main Today's Panel -->
+                <!-- Main Logs Panel -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-4 no-print">
+                    <div class="p-4 sm:p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-3 no-print">
                         <div>
-                            <h2 class="text-lg font-semibold text-gray-800">📋 Today's Attendance Logs</h2>
+                            <h2 class="text-base sm:text-lg font-semibold text-gray-800">📋 Today's Attendance Logs</h2>
                             <p class="text-xs text-gray-500" id="currentDateDisplay"></p>
                         </div>
-                        <div class="flex gap-2">
-                            <button onclick="exportToCSV(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition flex items-center gap-1">
-                                📥 Export Today CSV
+                        <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                            <button onclick="exportToCSV(true)" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition text-center">
+                                📥 CSV
                             </button>
-                            <button onclick="window.print()" class="bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition flex items-center gap-1">
+                            <button onclick="window.print()" class="flex-1 sm:flex-none bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition text-center">
                                 🖨️ Print
                             </button>
-                            <button onclick="clearTodayRecords()" class="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium px-3 py-2 rounded-lg transition border border-red-200">
+                            <button onclick="clearTodayRecords()" class="flex-1 sm:flex-none bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium px-3 py-2 rounded-lg transition border border-red-200 text-center">
                                 🗑️ Clear Today
                             </button>
                         </div>
                     </div>
 
                     <!-- Filter Strip -->
-                    <div class="p-3 bg-slate-50 border-b border-gray-200 flex flex-wrap gap-3 items-center text-xs no-print">
+                    <div class="p-3 bg-slate-50 border-b border-gray-200 flex items-center gap-2 text-xs no-print">
                         <span class="font-semibold text-gray-600">Filter:</span>
-                        <select id="dailyFilterType" onchange="renderDailyTable()" class="border rounded px-2 py-1 bg-white">
+                        <select id="dailyFilterType" onchange="renderDailyTable()" class="border rounded px-2.5 py-1.5 bg-white text-xs">
                             <option value="ALL">All Worker Types</option>
                             <option value="Regular">Regular Only</option>
                             <option value="Contractor">Contractors Only</option>
                         </select>
                     </div>
 
-                    <!-- Summary Cards -->
-                    <div class="grid grid-cols-4 gap-2 p-4 bg-gray-50 border-b border-gray-200 text-center no-print">
-                        <div class="bg-white p-3 rounded-lg border">
-                            <span class="block text-xs text-gray-500">Present</span>
-                            <span class="text-lg font-bold text-blue-600" id="statPresent">0</span>
+                    <!-- Summary Stats Grid -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 sm:p-4 bg-gray-50 border-b border-gray-200 text-center no-print">
+                        <div class="bg-white p-2.5 sm:p-3 rounded-lg border shadow-sm">
+                            <span class="block text-[11px] text-gray-500">Present Today</span>
+                            <span class="text-base sm:text-lg font-bold text-blue-600" id="statPresent">0</span>
                         </div>
-                        <div class="bg-white p-3 rounded-lg border">
-                            <span class="block text-xs text-gray-500">Contractors</span>
-                            <span class="text-lg font-bold text-amber-600" id="statContractors">0</span>
+                        <div class="bg-white p-2.5 sm:p-3 rounded-lg border shadow-sm">
+                            <span class="block text-[11px] text-gray-500">Contractors</span>
+                            <span class="text-base sm:text-lg font-bold text-amber-600" id="statContractors">0</span>
                         </div>
-                        <div class="bg-white p-3 rounded-lg border">
-                            <span class="block text-xs text-gray-500">Completed Shift</span>
-                            <span class="text-lg font-bold text-emerald-600" id="statCompleted">0</span>
+                        <div class="bg-white p-2.5 sm:p-3 rounded-lg border shadow-sm">
+                            <span class="block text-[11px] text-gray-500">Completed Shift</span>
+                            <span class="text-base sm:text-lg font-bold text-emerald-600" id="statCompleted">0</span>
                         </div>
-                        <div class="bg-white p-3 rounded-lg border">
-                            <span class="block text-xs text-gray-500">Total OT (Hrs)</span>
-                            <span class="text-lg font-bold text-purple-600" id="statTotalOT">0.00</span>
+                        <div class="bg-white p-2.5 sm:p-3 rounded-lg border shadow-sm">
+                            <span class="block text-[11px] text-gray-500">Total OT (Hrs)</span>
+                            <span class="text-base sm:text-lg font-bold text-purple-600" id="statTotalOT">0.00</span>
                         </div>
                     </div>
 
-                    <!-- Daily Table -->
-                    <div class="overflow-x-auto">
+                    <!-- Desktop Table View -->
+                    <div class="hidden sm:block overflow-x-auto">
                         <table class="w-full text-left text-sm">
                             <thead class="bg-gray-100 text-gray-600 uppercase text-[11px] tracking-wider border-b">
                                 <tr>
@@ -215,10 +217,16 @@
                                 </tr>
                             </thead>
                             <tbody id="dailyTableBody" class="divide-y divide-gray-200 font-mono text-xs">
-                                <!-- Dynamic Content -->
+                                <!-- Dynamic Rows -->
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Mobile Card List View -->
+                    <div id="dailyMobileList" class="block sm:hidden divide-y divide-gray-200">
+                        <!-- Dynamic Mobile Cards -->
+                    </div>
+
                 </div>
 
             </div>
@@ -226,35 +234,35 @@
         </div>
 
         <!-- TAB 2: ATTENDANCE HISTORY & LOGS -->
-        <div id="tabHistoryView" class="hidden space-y-6">
+        <div id="tabHistoryView" class="hidden space-y-4 sm:space-y-6">
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-4">
+                <div class="p-4 sm:p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-3">
                     <div>
-                        <h2 class="text-lg font-semibold text-gray-800">📜 All Attendance History Logs</h2>
-                        <p class="text-xs text-gray-500">View, search, and export historical worker punches across all dates.</p>
+                        <h2 class="text-base sm:text-lg font-semibold text-gray-800">📜 All Attendance History Logs</h2>
+                        <p class="text-xs text-gray-500">View and export historical punches across dates.</p>
                     </div>
-                    <div class="flex gap-2">
-                        <button onclick="exportToCSV(false)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition flex items-center gap-1">
-                            📥 Export Filtered CSV
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <button onclick="exportToCSV(false)" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition text-center">
+                            📥 Export CSV
                         </button>
-                        <button onclick="clearAllRecords()" class="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium px-3 py-2 rounded-lg transition border border-red-200">
+                        <button onclick="clearAllRecords()" class="flex-1 sm:flex-none bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium px-3 py-2 rounded-lg transition border border-red-200 text-center">
                             🗑️ Clear All Logs
                         </button>
                     </div>
                 </div>
 
-                <!-- Search & Filters Strip -->
-                <div class="p-4 bg-slate-50 border-b border-gray-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                <!-- History Filters Strip -->
+                <div class="p-3 sm:p-4 bg-slate-50 border-b border-gray-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
                     <div>
-                        <label class="block text-gray-500 mb-1 font-medium">Filter by Date</label>
+                        <label class="block text-gray-500 mb-1 font-medium">Filter Date</label>
                         <input type="date" id="historyFilterDate" onchange="renderHistoryTable()" class="w-full border rounded px-3 py-2 bg-white">
                     </div>
                     <div>
-                        <label class="block text-gray-500 mb-1 font-medium">Search Worker (Name / ID)</label>
-                        <input type="text" id="historySearchQuery" oninput="renderHistoryTable()" placeholder="Type to search..." class="w-full border rounded px-3 py-2 bg-white">
+                        <label class="block text-gray-500 mb-1 font-medium">Search Worker</label>
+                        <input type="text" id="historySearchQuery" oninput="renderHistoryTable()" placeholder="Name or ID..." class="w-full border rounded px-3 py-2 bg-white">
                     </div>
                     <div>
-                        <label class="block text-gray-500 mb-1 font-medium">Worker Type</label>
+                        <label class="block text-gray-500 mb-1 font-medium">Category</label>
                         <select id="historyFilterType" onchange="renderHistoryTable()" class="w-full border rounded px-3 py-2 bg-white">
                             <option value="ALL">All Worker Types</option>
                             <option value="Regular">Regular Employee</option>
@@ -269,8 +277,8 @@
                     </div>
                 </div>
 
-                <!-- History Table -->
-                <div class="overflow-x-auto">
+                <!-- History Desktop Table View -->
+                <div class="hidden sm:block overflow-x-auto">
                     <table class="w-full text-left text-sm">
                         <thead class="bg-gray-100 text-gray-600 uppercase text-[11px] tracking-wider border-b">
                             <tr>
@@ -287,29 +295,35 @@
                             </tr>
                         </thead>
                         <tbody id="historyTableBody" class="divide-y divide-gray-200 font-mono text-xs">
-                            <!-- Dynamic Content -->
+                            <!-- Dynamic Rows -->
                         </tbody>
                     </table>
                 </div>
+
+                <!-- History Mobile Card List View -->
+                <div id="historyMobileList" class="block sm:hidden divide-y divide-gray-200">
+                    <!-- Dynamic Mobile History Cards -->
+                </div>
+
             </div>
         </div>
 
         <!-- TAB 3: WORKER DIRECTORY & DETAILS -->
-        <div id="tabDirectoryView" class="hidden space-y-6">
+        <div id="tabDirectoryView" class="hidden space-y-4 sm:space-y-6">
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-4">
+                <div class="p-4 sm:p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-3">
                     <div>
-                        <h2 class="text-lg font-semibold text-gray-800">👥 Master Worker Directory</h2>
-                        <p class="text-xs text-gray-500">View worker details, filter profiles, and reprint barcode badges.</p>
+                        <h2 class="text-base sm:text-lg font-semibold text-gray-800">👥 Master Worker Directory</h2>
+                        <p class="text-xs text-gray-500">View profiles and reprint barcode badges.</p>
                     </div>
                     <span id="directoryTotalBadge" class="bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full font-semibold">Total: 0 Workers</span>
                 </div>
 
-                <!-- Search & Filters Strip -->
-                <div class="p-4 bg-slate-50 border-b border-gray-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <!-- Directory Search & Filters Strip -->
+                <div class="p-3 sm:p-4 bg-slate-50 border-b border-gray-200 grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
                     <div>
-                        <label class="block text-gray-500 mb-1 font-medium">Search Worker (Name / ID)</label>
-                        <input type="text" id="directorySearchQuery" oninput="renderDirectoryTable()" placeholder="Search by name or ID..." class="w-full border rounded px-3 py-2 bg-white">
+                        <label class="block text-gray-500 mb-1 font-medium">Search Worker</label>
+                        <input type="text" id="directorySearchQuery" oninput="renderDirectoryTable()" placeholder="Name or ID..." class="w-full border rounded px-3 py-2 bg-white">
                     </div>
                     <div>
                         <label class="block text-gray-500 mb-1 font-medium">Filter Category</label>
@@ -327,8 +341,8 @@
                     </div>
                 </div>
 
-                <!-- Directory Table -->
-                <div class="overflow-x-auto">
+                <!-- Directory Desktop Table View -->
+                <div class="hidden sm:block overflow-x-auto">
                     <table class="w-full text-left text-sm">
                         <thead class="bg-gray-100 text-gray-600 uppercase text-[11px] tracking-wider border-b">
                             <tr>
@@ -341,10 +355,16 @@
                             </tr>
                         </thead>
                         <tbody id="directoryTableBody" class="divide-y divide-gray-200 text-xs">
-                            <!-- Dynamic Directory Content -->
+                            <!-- Dynamic Rows -->
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Directory Mobile Card List View -->
+                <div id="directoryMobileList" class="block sm:hidden divide-y divide-gray-200">
+                    <!-- Dynamic Mobile Directory Cards -->
+                </div>
+
             </div>
         </div>
 
@@ -363,7 +383,7 @@
         let html5QrcodeScanner = null;
         let activeBadgeWorker = null;
 
-        const SCAN_COOLDOWN_MS = 5 * 60 * 1000; // 5 Minutes Cooldown
+        const SCAN_COOLDOWN_MS = 5 * 60 * 1000; // 5-minute cooldown period
 
         document.addEventListener("DOMContentLoaded", () => {
             document.getElementById('currentDateDisplay').innerText = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
@@ -396,21 +416,21 @@
             document.getElementById('tabHistoryView').classList.add('hidden');
             document.getElementById('tabDirectoryView').classList.add('hidden');
 
-            document.getElementById('tabBtnDaily').className = "px-4 py-2 rounded-md text-white hover:bg-blue-700 transition";
-            document.getElementById('tabBtnHistory').className = "px-4 py-2 rounded-md text-white hover:bg-blue-700 transition";
-            document.getElementById('tabBtnDirectory').className = "px-4 py-2 rounded-md text-white hover:bg-blue-700 transition";
+            document.getElementById('tabBtnDaily').className = "px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition";
+            document.getElementById('tabBtnHistory').className = "px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition";
+            document.getElementById('tabBtnDirectory').className = "px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition";
 
             if (tab === 'daily') {
                 document.getElementById('tabDailyView').classList.remove('hidden');
-                document.getElementById('tabBtnDaily').className = "px-4 py-2 rounded-md bg-white text-blue-800 font-semibold transition";
+                document.getElementById('tabBtnDaily').className = "px-3 py-2 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition";
                 renderDailyTable();
             } else if (tab === 'history') {
                 document.getElementById('tabHistoryView').classList.remove('hidden');
-                document.getElementById('tabBtnHistory').className = "px-4 py-2 rounded-md bg-white text-blue-800 font-semibold transition";
+                document.getElementById('tabBtnHistory').className = "px-3 py-2 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition";
                 renderHistoryTable();
             } else if (tab === 'directory') {
                 document.getElementById('tabDirectoryView').classList.remove('hidden');
-                document.getElementById('tabBtnDirectory').className = "px-4 py-2 rounded-md bg-white text-blue-800 font-semibold transition";
+                document.getElementById('tabBtnDirectory').className = "px-3 py-2 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition";
                 renderDirectoryTable();
             }
         }
@@ -439,10 +459,9 @@
             localStorage.setItem('workersDirectory', JSON.stringify(workers));
             populateDepartmentDropdowns();
             
-            // Generate Badge
             generateBarcodeBadge(id, name, dept, type, agency);
 
-            showAlert(`Worker ${name} (${id}) added successfully! Ready to print badge.`, 'bg-green-100 border-green-400 text-green-700');
+            showAlert(`Worker ${name} (${id}) registered! Ready to print badge.`, 'bg-green-100 border-green-400 text-green-700');
             document.getElementById('addWorkerForm').reset();
             document.getElementById('agencyInputGroup').classList.add('hidden');
         }
@@ -478,7 +497,7 @@
         }
 
         function deleteWorkerProfile(id) {
-            if (confirm(`Are you sure you want to remove ${workers[id]?.name || id} from directory?`)) {
+            if (confirm(`Are you sure you want to delete ${workers[id]?.name || id} from directory?`)) {
                 delete workers[id];
                 localStorage.setItem('workersDirectory', JSON.stringify(workers));
                 populateDepartmentDropdowns();
@@ -491,7 +510,7 @@
             let worker = workers[scannedId];
             let name = worker ? worker.name : `Worker (${scannedId})`;
 
-            // Check 5-minute cooldown timer per worker ID
+            // 5-minute scan lock verification
             if (lastScanTimestamps[scannedId]) {
                 const timeDiff = nowTime - lastScanTimestamps[scannedId];
                 if (timeDiff < SCAN_COOLDOWN_MS) {
@@ -542,7 +561,7 @@
                 showAlert(`🔴 OUT PUNCH: ${name} checked out at ${timeStr}. OT: ${record.otHours} hrs`, 'bg-purple-100 border-purple-400 text-purple-800');
             }
 
-            // Update scan timestamp lock
+            // Save scan timestamp lock
             lastScanTimestamps[scannedId] = nowTime;
             localStorage.setItem('lastScanTimestamps', JSON.stringify(lastScanTimestamps));
 
@@ -568,7 +587,7 @@
             let diffMs = outDate - inDate;
             let totalHours = Math.max(0, diffMs / (1000 * 60 * 60));
 
-            // OT Rule: Calculate OT above shift hours ONLY if worked >= 30 mins over shift
+            // OT Rule: OT calculated strictly above standard shift hours ONLY if worked >= 30 mins over shift
             let otHours = 0;
             if (totalHours >= (shiftHrs + 0.5)) {
                 otHours = totalHours - shiftHrs;
@@ -602,7 +621,7 @@
                     localStorage.setItem('attendanceLogs', JSON.stringify(attendanceLogs));
                     renderDailyTable();
                     renderHistoryTable();
-                    showAlert(`✏️ Manual OT updated to ${record.otHours} hrs for ${record.name}`, 'bg-blue-100 border-blue-400 text-blue-800');
+                    showAlert(`✏️ Manual OT set to ${record.otHours} hrs for ${record.name}`, 'bg-blue-100 border-blue-400 text-blue-800');
                 } else {
                     alert("Invalid overtime value. Please enter a positive number.");
                 }
@@ -611,6 +630,7 @@
 
         function renderDailyTable() {
             const tbody = document.getElementById('dailyTableBody');
+            const mobileList = document.getElementById('dailyMobileList');
             const todayStr = new Date().toISOString().split('T')[0];
             const filterType = document.getElementById('dailyFilterType').value;
 
@@ -621,6 +641,7 @@
             }
 
             tbody.innerHTML = '';
+            mobileList.innerHTML = '';
             
             let presentCount = 0;
             let contractorCount = 0;
@@ -636,7 +657,9 @@
             });
 
             if (todayLogs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-gray-400">No attendance records found for today matching filter. Scan barcode to check-in.</td></tr>`;
+                const emptyMsg = `<div class="py-6 text-center text-gray-400 text-xs">No records logged for today matching filter. Scan barcode to check in.</div>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-gray-400">No records logged for today matching filter. Scan barcode to check in.</td></tr>`;
+                mobileList.innerHTML = emptyMsg;
             } else {
                 todayLogs.forEach((r) => {
                     let globalIndex = attendanceLogs.indexOf(r);
@@ -645,13 +668,14 @@
                         : `<span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-semibold text-[10px]">Regular</span>`;
 
                     let statusBadge = r.status === 'IN' 
-                        ? `<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-semibold text-[10px]">PUNCHED IN</span>`
+                        ? `<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-semibold text-[10px]">IN PUNCH</span>`
                         : `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-semibold text-[10px]">COMPLETED</span>`;
 
                     let otDisplay = parseFloat(r.otHours) > 0 
                         ? `<span class="text-red-600 font-bold">${r.otHours} ${r.manualOT ? '✏️' : ''}</span>`
                         : `<span class="text-gray-500">${r.otHours || '0.00'}</span>`;
 
+                    // Desktop Table Row
                     tbody.innerHTML += `
                         <tr class="hover:bg-gray-50 border-b">
                             <td class="py-3 px-4 font-bold text-gray-700">${r.id}</td>
@@ -667,6 +691,29 @@
                             </td>
                         </tr>
                     `;
+
+                    // Mobile Touch Card
+                    mobileList.innerHTML += `
+                        <div class="p-4 bg-white space-y-2">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="font-bold text-gray-800 text-sm font-mono">${r.id}</span> - 
+                                    <span class="font-semibold text-gray-900 text-sm">${r.name}</span>
+                                    <div class="mt-1">${typeBadge}</div>
+                                </div>
+                                ${statusBadge}
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-200 font-mono">
+                                <div><span class="text-gray-500 block text-[10px]">IN TIME</span><span class="text-emerald-700 font-bold">${r.inTime}</span></div>
+                                <div><span class="text-gray-500 block text-[10px]">OUT TIME</span><span class="text-purple-700 font-bold">${r.outTime || '--:--'}</span></div>
+                                <div><span class="text-gray-500 block text-[10px]">TOTAL WORK</span><span class="font-bold">${r.totalHours || '0.00'} hrs</span></div>
+                                <div><span class="text-gray-500 block text-[10px]">OVERTIME</span><span class="font-bold">${otDisplay} hrs</span></div>
+                            </div>
+                            <div class="pt-1 text-right no-print">
+                                <button onclick="editManualOT(${globalIndex})" class="w-full bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 py-1.5 rounded text-xs font-semibold">✏️ Edit Manual OT</button>
+                            </div>
+                        </div>
+                    `;
                 });
             }
 
@@ -678,6 +725,7 @@
 
         function renderHistoryTable() {
             const tbody = document.getElementById('historyTableBody');
+            const mobileList = document.getElementById('historyMobileList');
             const filterDate = document.getElementById('historyFilterDate').value;
             const searchQuery = document.getElementById('historySearchQuery').value.toLowerCase().trim();
             const filterType = document.getElementById('historyFilterType').value;
@@ -702,9 +750,12 @@
             }
 
             tbody.innerHTML = '';
+            mobileList.innerHTML = '';
 
             if (filteredLogs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10" class="py-6 text-center text-gray-400">No history records found matching search filters.</td></tr>`;
+                const emptyMsg = `<div class="py-6 text-center text-gray-400 text-xs">No historical records found matching filter.</div>`;
+                tbody.innerHTML = `<tr><td colspan="10" class="py-6 text-center text-gray-400">No historical records found matching filter.</td></tr>`;
+                mobileList.innerHTML = emptyMsg;
             } else {
                 filteredLogs.reverse().forEach((r) => {
                     let globalIndex = attendanceLogs.indexOf(r);
@@ -713,13 +764,14 @@
                         : `<span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-semibold text-[10px]">Regular</span>`;
 
                     let statusBadge = r.status === 'IN' 
-                        ? `<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-semibold text-[10px]">PUNCHED IN</span>`
+                        ? `<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-semibold text-[10px]">IN PUNCH</span>`
                         : `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-semibold text-[10px]">COMPLETED</span>`;
 
                     let otDisplay = parseFloat(r.otHours) > 0 
                         ? `<span class="text-red-600 font-bold">${r.otHours} ${r.manualOT ? '✏️' : ''}</span>`
                         : `<span class="text-gray-500">${r.otHours || '0.00'}</span>`;
 
+                    // Desktop Row
                     tbody.innerHTML += `
                         <tr class="hover:bg-gray-50 border-b">
                             <td class="py-3 px-4 font-semibold text-gray-600">${r.date}</td>
@@ -736,12 +788,37 @@
                             </td>
                         </tr>
                     `;
+
+                    // Mobile Touch Card
+                    mobileList.innerHTML += `
+                        <div class="p-4 bg-white space-y-2">
+                            <div class="flex justify-between items-center text-xs text-gray-500">
+                                <span class="font-bold text-gray-700">${r.date}</span>
+                                ${statusBadge}
+                            </div>
+                            <div>
+                                <span class="font-bold text-gray-800 text-sm font-mono">${r.id}</span> - 
+                                <span class="font-semibold text-gray-900 text-sm">${r.name}</span>
+                                <div class="mt-1">${typeBadge}</div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-200 font-mono">
+                                <div><span class="text-gray-500 block text-[10px]">IN TIME</span><span class="text-emerald-700 font-bold">${r.inTime}</span></div>
+                                <div><span class="text-gray-500 block text-[10px]">OUT TIME</span><span class="text-purple-700 font-bold">${r.outTime || '--:--'}</span></div>
+                                <div><span class="text-gray-500 block text-[10px]">TOTAL WORK</span><span class="font-bold">${r.totalHours || '0.00'} hrs</span></div>
+                                <div><span class="text-gray-500 block text-[10px]">OVERTIME</span><span class="font-bold">${otDisplay} hrs</span></div>
+                            </div>
+                            <div class="pt-1 text-right">
+                                <button onclick="editManualOT(${globalIndex})" class="w-full bg-blue-50 text-blue-700 border border-blue-200 py-1.5 rounded text-xs font-semibold">✏️ Edit Manual OT</button>
+                            </div>
+                        </div>
+                    `;
                 });
             }
         }
 
         function renderDirectoryTable() {
             const tbody = document.getElementById('directoryTableBody');
+            const mobileList = document.getElementById('directoryMobileList');
             const searchQuery = document.getElementById('directorySearchQuery').value.toLowerCase().trim();
             const filterType = document.getElementById('directoryFilterType').value;
             const filterDept = document.getElementById('directoryFilterDept').value;
@@ -757,9 +834,12 @@
 
             document.getElementById('directoryTotalBadge').innerText = `Total: ${filteredIds.length} Workers`;
             tbody.innerHTML = '';
+            mobileList.innerHTML = '';
 
             if (filteredIds.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-gray-400">No workers found matching directory filters.</td></tr>`;
+                const emptyMsg = `<div class="py-6 text-center text-gray-400 text-xs">No workers found in directory.</div>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-gray-400">No workers found in directory.</td></tr>`;
+                mobileList.innerHTML = emptyMsg;
             } else {
                 filteredIds.forEach(id => {
                     let w = workers[id];
@@ -767,6 +847,7 @@
                         ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold text-[10px]">Contractor</span>`
                         : `<span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-semibold text-[10px]">Regular Employee</span>`;
 
+                    // Desktop Row
                     tbody.innerHTML += `
                         <tr class="hover:bg-gray-50 border-b">
                             <td class="py-3 px-4 font-bold font-mono text-gray-800">${id}</td>
@@ -783,6 +864,31 @@
                                 </button>
                             </td>
                         </tr>
+                    `;
+
+                    // Mobile Touch Card
+                    mobileList.innerHTML += `
+                        <div class="p-4 bg-white space-y-2">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="font-bold text-gray-800 text-sm font-mono">${id}</span>
+                                    <h4 class="font-bold text-gray-900 text-base">${w.name}</h4>
+                                </div>
+                                ${typeBadge}
+                            </div>
+                            <div class="text-xs text-gray-600 space-y-1 bg-slate-50 p-2.5 rounded border border-slate-200">
+                                <div><span class="font-semibold text-gray-500">Department:</span> ${w.dept || 'General'}</div>
+                                <div><span class="font-semibold text-gray-500">Agency/Contractor:</span> ${w.agency || '-'}</div>
+                            </div>
+                            <div class="flex gap-2 pt-1">
+                                <button onclick="reprintWorkerBadge('${id}')" class="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 py-2 rounded text-xs font-semibold text-center">
+                                    🖨️ Reprint Badge
+                                </button>
+                                <button onclick="deleteWorkerProfile('${id}')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded text-xs font-semibold">
+                                    🗑️ Delete
+                                </button>
+                            </div>
+                        </div>
                     `;
                 });
             }
@@ -808,7 +914,7 @@
 
         function showAlert(msg, colorClass) {
             const alertBox = document.getElementById('scanAlert');
-            alertBox.className = `p-4 rounded-xl border font-medium text-sm transition-all duration-300 ${colorClass}`;
+            alertBox.className = `p-3 sm:p-4 rounded-xl border font-medium text-xs sm:text-sm transition-all duration-300 ${colorClass}`;
             alertBox.innerText = msg;
             alertBox.classList.remove('hidden');
 
@@ -821,7 +927,7 @@
             const readerElement = document.getElementById('reader');
             if (readerElement.classList.contains('hidden')) {
                 readerElement.classList.remove('hidden');
-                html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 150 } });
+                html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 220, height: 140 } });
                 html5QrcodeScanner.render((decodedText) => {
                     handleBarcodeScan(decodedText);
                 }, (error) => {});
