@@ -1,382 +1,143 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Worker Attendance & Overtime Tracker (Cloud Synced)</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Html5-QRCode Library for Web Camera Scanner -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <!-- JsBarcode Library for Rendering Barcodes -->
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <!-- Firebase App, Firestore, and Analytics Compat SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
-    <style>
-        @media print {
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            body { background: white; margin: 0; padding: 0; }
-            .badge-print-box {
-                width: 6cm !important;
-                height: 4cm !important;
-                max-width: 6cm !important;
-                max-height: 4cm !important;
-                box-sizing: border-box;
-                page-break-inside: avoid;
-                overflow: hidden;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                text-align: center;
-                padding: 3mm !important;
-                border: 1px solid #000 !important;
-                background: white !important;
-            }
-            #printBadgesContainer {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 2mm;
-                justify-content: flex-start;
-                align-items: flex-start;
-            }
-        }
-        .print-only { display: none; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
-</head>
-<body class="bg-slate-100 text-gray-800 font-sans min-h-screen pb-4">
+// --- Enhanced Audio Beep & Mobile Vibration Feedback ---
+let audioCtx = null;
 
-    <!-- Header -->
-    <header class="bg-blue-700 text-white shadow-md sticky top-0 z-30 no-print">
-        <div class="max-w-7xl mx-auto px-4 py-2 flex flex-wrap justify-between items-center gap-2">
-            <div class="flex items-center gap-2 sm:gap-3">
-                <h1 class="text-base sm:text-xl font-bold tracking-wide flex items-center gap-1.5">
-                    <span>👷</span> Worker Attendance & OT
-                </h1>
-                <span id="syncStatus" class="bg-blue-900 text-blue-200 text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1 font-mono">
-                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse" id="syncStatusDot"></span>
-                    <span id="syncStatusText">Connecting...</span>
-                </span>
-            </div>
+function getAudioContext() {
+    if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioCtx = new AudioContextClass();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+    }
+    return audioCtx;
+}
 
-            <div class="flex items-center gap-2 sm:gap-3">
-                <div class="text-xs bg-blue-800 px-2.5 py-1 rounded font-mono hidden sm:block" id="liveClock">--:--:--</div>
-                
-                <!-- Auth User Profile Badge & Login Button -->
-                <div id="authHeaderWidget" class="flex items-center gap-2">
-                    <div id="userInfoDisplay" class="hidden text-xs bg-blue-900/80 border border-blue-500 text-blue-100 px-2.5 py-1 rounded-md font-mono flex items-center gap-2">
-                        <span>👤 <strong id="userRoleBadge" class="text-amber-300">Admin</strong></span>
-                        <span class="text-blue-300">|</span>
-                        <span id="userNameDisplay" class="max-w-[100px] truncate">Admin User</span>
-                    </div>
-                    <button id="createUserHeaderBtn" onclick="openCreateUserModal()" class="hidden bg-emerald-500 hover:bg-emerald-600 text-blue-950 font-bold text-xs px-2.5 py-1 rounded transition shadow-sm flex items-center gap-1">
-                        ⚙️ <span>Users & Accounts</span>
-                    </button>
-                    <button id="loginHeaderBtn" onclick="openLoginModal()" class="bg-amber-500 hover:bg-amber-600 text-blue-950 font-bold text-xs px-2.5 py-1 rounded transition shadow-sm flex items-center gap-1">
-                        🔑 <span>Log In</span>
-                    </button>
-                    <button id="logoutHeaderBtn" onclick="handleLogout()" class="hidden bg-red-600 hover:bg-red-700 text-white font-medium text-xs px-2 py-1 rounded transition">
-                        🚪 Logout
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Navigation Tabs -->
-        <div class="bg-blue-800 px-4 py-1 border-t border-blue-600">
-            <div class="max-w-7xl mx-auto flex gap-2 overflow-x-auto no-scrollbar text-xs font-medium">
-                <button id="tabBtnDaily" onclick="switchTab('daily')" class="px-3 py-1.5 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition">
-                    📅 Daily Punch Log
-                </button>
-                <button id="tabBtnHistory" onclick="switchTab('history')" class="px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition">
-                    📜 History Logs
-                </button>
-                <button id="tabBtnDirectory" onclick="switchTab('directory')" class="px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition">
-                    👥 Worker Directory & Badges
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Modals (Login, Out Time, Edit Worker) omitted for brevity in snippet or kept fully below -->
-    <!-- [All modal structures remain identical to your original file] -->
-
-    <main class="max-w-7xl mx-auto p-2 sm:p-4 no-print">
-        <!-- TAB 1: DAILY ATTENDANCE -->
-        <div id="tabDailyView" class="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-start">
-            <div class="lg:col-span-4 space-y-3 no-print">
-                <div class="bg-white rounded-lg shadow-sm p-3 border border-gray-200">
-                    <h2 class="text-sm font-bold text-gray-700 mb-1.5 flex items-center justify-between">
-                        <span>📷 Scan Worker ID</span>
-                        <span class="text-[10px] text-gray-400 font-normal">5-Min Cooldown Active</span>
-                    </h2>
-                    <div class="mb-2">
-                        <input type="text" id="barcodeInput" placeholder="Tap here & scan barcode..." 
-                            class="w-full border-2 border-blue-400 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none font-mono" autofocus>
-                    </div>
-                    <button id="toggleCameraBtn" onclick="toggleCameraScanner()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-medium py-1.5 rounded-md transition text-xs flex items-center justify-center gap-1.5">
-                        <span>📹</span> Start / Stop Camera Scanner
-                    </button>
-                    <div id="reader" class="mt-2 overflow-hidden rounded-lg border border-gray-300 hidden"></div>
-                </div>
-            </div>
-            <!-- Right Column and other views -->
-            <div class="lg:col-span-8 space-y-3">
-                <div id="scanAlert" class="hidden p-2 rounded-lg border font-medium text-xs transition-all duration-300"></div>
-                <!-- Main logs table container -->
-            </div>
-        </div>
-    </main>
-
-    <!-- JavaScript Application Logic with 5-Minute Cooldown & Firebase Sync -->
-    <script>
-        // --- Firebase Configuration ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyCMXQY6Y1VWNQUnH-utEdpAxk0qxSqtdvw",
-            authDomain: "attendance-afd2a.firebaseapp.com",
-            projectId: "attendance-afd2a",
-            storageBucket: "attendance-afd2a.firebasestorage.app",
-            messagingSenderId: "546193787959",
-            appId: "1:546193787959:web:736a11b4ee2b5d67a9c3b2",
-            measurementId: "G-F3DC9JF4TW"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
-        // --- Application State ---
-        let workersDirectory = {}; 
-        let attendanceLogs = [];   
-        let lastScanTimes = {};    // Stores timestamp of last scan per worker ID for 5-minute debounce
-        const SCAN_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
-
-        let currentUser = { username: 'admin', name: 'Admin User', role: 'Admin' };
-        let registeredUsers = [
-            { username: 'admin', password: 'admin123', name: 'System Admin', role: 'Admin' },
-            { username: 'supervisor', password: 'super123', name: 'Site Supervisor', role: 'Supervisor' }
-        ];
-
-        let selectedDailyLogs = new Set();
-        let selectedHistoryLogs = new Set();
-        let selectedDirWorkers = new Set();
-
-        let html5QrcodeScanner = null;
-        let isScannerRunning = false;
-        let selectedWorkerForMod = null;
-        let selectedWorkerForEdit = null;
-
-        // --- Web Audio API Scan Beep Synthesizer ---
-        let audioCtx = null;
-        function getAudioContext() {
-            if (!audioCtx) {
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                if (AudioContextClass) audioCtx = new AudioContextClass();
-            }
-            if (audioCtx && audioCtx.state === 'suspended') {
-                audioCtx.resume().catch(() => {});
-            }
-            return audioCtx;
-        }
-
-        function playScanBeep(isWarning = false) {
-            try {
-                const ctx = getAudioContext();
-                if (!ctx) return;
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(isWarning ? 300 : 880, ctx.currentTime); 
-                gain.gain.setValueAtTime(0.2, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (isWarning ? 0.3 : 0.12));
-
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.start(ctx.currentTime);
-                osc.stop(ctx.currentTime + (isWarning ? 0.3 : 0.12));
-            } catch (e) {
-                console.warn('Audio feedback unavailable:', e);
-            }
-        }
-
-        // Initialize App & Firebase Listeners
-        window.addEventListener('DOMContentLoaded', () => {
-            initLiveClock();
-            updateSyncStatus('syncing', 'Connecting to Cloud Firestore...');
-
-            const activeUser = localStorage.getItem('wt_active_user');
-            if (activeUser) currentUser = JSON.parse(activeUser);
-            
-            const barcodeInput = document.getElementById('barcodeInput');
-            barcodeInput.addEventListener('keypress', (e) => {
-                getAudioContext();
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const code = barcodeInput.value.trim();
-                    if (code) {
-                        processBarcodeScan(code);
-                        barcodeInput.value = '';
-                    }
-                }
-            });
-
-            // Real-time Firestore Listeners
-            db.collection("attendanceApp").doc("workersDirectory").onSnapshot((doc) => {
-                if (doc.exists && doc.data().data) {
-                    workersDirectory = doc.data().data;
-                }
-            });
-
-            db.collection("attendanceApp").doc("attendanceLogs").onSnapshot((doc) => {
-                if (doc.exists && doc.data().data) {
-                    attendanceLogs = doc.data().data;
-                    renderDailyTable();
-                }
-                updateSyncStatus('connected', 'Cloud Firestore Synced (Active)');
-            });
-        });
-
-        // --- 5-Minute Cooldown Barcode Processing ---
-        function processBarcodeScan(barcodeId) {
-            const cleanId = barcodeId.trim();
-            if (!cleanId) return;
-
-            const now = Date.now();
-
-            // Check if barcode was scanned within the last 5 minutes
-            if (lastScanTimes[cleanId]) {
-                const elapsed = now - lastScanTimes[cleanId];
-                if (elapsed < SCAN_COOLDOWN_MS) {
-                    const remainingSecs = Math.ceil((SCAN_COOLDOWN_MS - elapsed) / 1000);
-                    const remainingMins = Math.ceil(remainingSecs / 60);
-                    playScanBeep(true); // Warning tone
-                    showAlert(`⚠️ Duplicate scan ignored! Please wait ~${remainingMins} min(s) before scanning worker <strong>${cleanId}</strong> again.`, 'warning');
-                    return;
-                }
-            }
-
-            // Update last scan timestamp for cooldown tracking
-            lastScanTimes[cleanId] = now;
-            playScanBeep(false); // Success scan tone
-
-            let worker = workersDirectory[cleanId];
-            if (!worker) {
-                worker = {
-                    id: cleanId,
-                    name: `Worker ${cleanId}`,
-                    dept: 'General',
-                    type: 'Regular',
-                    agency: ''
-                };
-                workersDirectory[cleanId] = worker;
-                saveToCloud();
-            }
-
-            const todayStr = getTodayDateString();
-            const currentTime = getCurrentTimeString();
-            let logIndex = attendanceLogs.findIndex(l => l.workerId === cleanId && l.date === todayStr);
-
-            if (logIndex === -1) {
-                const newLog = {
-                    id: 'log_' + Date.now(),
-                    workerId: worker.id,
-                    name: worker.name,
-                    dept: worker.dept || 'General',
-                    type: worker.type || 'Regular',
-                    agency: worker.agency || '',
-                    date: todayStr,
-                    inTime: currentTime,
-                    outTime: '',
-                    totalHours: '0.00',
-                    otHours: '0.00',
-                    loggedBy: currentUser ? currentUser.name : 'System',
-                    status: 'IN'
-                };
-                attendanceLogs.unshift(newLog);
-                showAlert(`✅ IN Punch logged for <strong>${worker.name}</strong> at ${currentTime}`, 'success');
+function triggerScanFeedback(isWarning = false) {
+    // 1. Mobile Device Haptic Vibration Feedback
+    if ("vibrate" in navigator) {
+        try {
+            if (isWarning) {
+                navigator.vibrate(400); // Long single vibration for cooldown/warning
             } else {
-                let log = attendanceLogs[logIndex];
-                if (!log.outTime) {
-                    log.outTime = currentTime;
-                    log.status = 'OUT';
-                    calculateLogHours(log);
-                    showAlert(`🚪 OUT Punch logged for <strong>${worker.name}</strong> at ${currentTime} (Hrs: ${log.totalHours})`, 'purple');
-                } else {
-                    log.outTime = currentTime;
-                    calculateLogHours(log);
-                    showAlert(`🔄 OUT Time updated for <strong>${worker.name}</strong> to ${currentTime}`, 'info');
-                }
+                navigator.vibrate([150, 50, 150]); // Distinct double pulse for success
             }
-
-            saveToCloud();
-            renderDailyTable();
+        } catch (e) {
+            console.warn('Vibration API restricted:', e);
         }
+    }
 
-        function calculateLogHours(log) {
-            if (!log.inTime || !log.outTime) return;
-            const inParts = log.inTime.split(':').map(Number);
-            const outParts = log.outTime.split(':').map(Number);
-            let inMins = inParts[0] * 60 + inParts[1];
-            let outMins = outParts[0] * 60 + outParts[1];
-            if (outMins < inMins) outMins += 24 * 60;
+    // 2. Loud Audio Beep Synthesizer (Web Audio API)
+    try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        if (isWarning) {
+            // Low Warning Tone (220Hz Buzz)
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(220, ctx.currentTime);
+            gain.gain.setValueAtTime(0.7, ctx.currentTime); // High volume
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
             
-            const totalHrs = (outMins - inMins) / 60;
-            log.totalHours = totalHrs.toFixed(2);
-            const shiftRuleHrs = 8;
-            log.otHours = totalHrs >= (shiftRuleHrs + 0.5) ? (totalHrs - shiftRuleHrs).toFixed(2) : '0.00';
-        }
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.35);
+        } else {
+            // Loud High-Pitch Dual Tone (1046.5 Hz - C6 Pitch)
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1046.5, ctx.currentTime); 
+            osc.frequency.setValueAtTime(1318.5, ctx.currentTime + 0.08); // Arpeggio step to E6
 
-        function saveToCloud() {
-            db.collection("attendanceApp").doc("workersDirectory").set({ data: workersDirectory });
-            db.collection("attendanceApp").doc("attendanceLogs").set({ data: attendanceLogs });
-        }
+            gain.gain.setValueAtTime(0.85, ctx.currentTime); // Extra Loud Volume
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
 
-        function updateSyncStatus(state, text) {
-            const dot = document.getElementById('syncStatusDot');
-            const txt = document.getElementById('syncStatusText');
-            txt.textContent = text;
-            dot.className = state === 'connected' ? "w-2 h-2 rounded-full bg-emerald-400" : "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.2);
         }
+    } catch (e) {
+        console.warn('Loud audio feedback unavailable:', e);
+    }
+}
 
-        function getTodayDateString() {
-            const today = new Date();
-            return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-        }
+// --- Updated Scan Processing Function ---
+function processBarcodeScan(barcodeId) {
+    const cleanId = barcodeId.trim();
+    if (!cleanId) return;
 
-        function getCurrentTimeString() {
-            const now = new Date();
-            return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        }
+    const now = Date.now();
 
-        function initLiveClock() {
-            setInterval(() => {
-                const now = new Date();
-                const clock = document.getElementById('liveClock');
-                if (clock) clock.textContent = now.toLocaleTimeString();
-            }, 1000);
-        }
+    // Check 5-Minute Cooldown Window
+    if (lastScanTimes[cleanId]) {
+        const elapsed = now - lastScanTimes[cleanId];
+        if (elapsed < SCAN_COOLDOWN_MS) {
+            const remainingSecs = Math.ceil((SCAN_COOLDOWN_MS - elapsed) / 1000);
+            const remainingMins = Math.ceil(remainingSecs / 60);
 
-        function showAlert(msg, type) {
-            const alertEl = document.getElementById('scanAlert');
-            alertEl.className = `p-2 rounded-lg border font-medium text-xs transition-all duration-300 ${
-                type === 'success' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                type === 'warning' ? 'bg-amber-100 text-amber-800 border-amber-300' :
-                type === 'purple' ? 'bg-purple-100 text-purple-800 border-purple-300' :
-                'bg-blue-100 text-blue-800 border-blue-300'
-            }`;
-            alertEl.innerHTML = msg;
-            alertEl.classList.remove('hidden');
-            setTimeout(() => alertEl.classList.add('hidden'), 4000);
+            // Trigger Warning Beep & Long Vibration
+            triggerScanFeedback(true);
+            showAlert(`⚠️ Duplicate scan ignored! Please wait ~${remainingMins} min(s) before scanning worker <strong>${cleanId}</strong> again.`, 'warning');
+            return;
         }
+    }
 
-        function renderDailyTable() {
-            // Renders table rows from attendanceLogs
+    // Successful Scan -> Register Timestamp & Trigger Loud Beep + Double Vibration
+    lastScanTimes[cleanId] = now;
+    triggerScanFeedback(false);
+
+    let worker = workersDirectory[cleanId];
+    if (!worker) {
+        worker = {
+            id: cleanId,
+            name: `Worker ${cleanId}`,
+            dept: 'General',
+            type: 'Regular',
+            agency: ''
+        };
+        workersDirectory[cleanId] = worker;
+        saveToCloud();
+    }
+
+    const todayStr = getTodayDateString();
+    const currentTime = getCurrentTimeString();
+    let logIndex = attendanceLogs.findIndex(l => l.workerId === cleanId && l.date === todayStr);
+
+    if (logIndex === -1) {
+        const newLog = {
+            id: 'log_' + Date.now(),
+            workerId: worker.id,
+            name: worker.name,
+            dept: worker.dept || 'General',
+            type: worker.type || 'Regular',
+            agency: worker.agency || '',
+            date: todayStr,
+            inTime: currentTime,
+            outTime: '',
+            totalHours: '0.00',
+            otHours: '0.00',
+            loggedBy: currentUser ? currentUser.name : 'System',
+            status: 'IN'
+        };
+        attendanceLogs.unshift(newLog);
+        showAlert(`✅ IN Punch logged for <strong>${worker.name}</strong> at ${currentTime}`, 'success');
+    } else {
+        let log = attendanceLogs[logIndex];
+        if (!log.outTime) {
+            log.outTime = currentTime;
+            log.status = 'OUT';
+            calculateLogHours(log);
+            showAlert(`🚪 OUT Punch logged for <strong>${worker.name}</strong> at ${currentTime} (Hrs: ${log.totalHours})`, 'purple');
+        } else {
+            log.outTime = currentTime;
+            calculateLogHours(log);
+            showAlert(`🔄 OUT Time updated for <strong>${worker.name}</strong> to ${currentTime}`, 'info');
         }
-    </script>
-</body>
-</html>
+    }
+
+    saveToCloud();
+    renderDailyTable();
+}
