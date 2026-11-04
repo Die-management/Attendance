@@ -3,18 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Worker Attendance & Overtime Tracker (Multi-User Live Sync)</title>
+    <title>Worker Attendance & Overtime Tracker</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Html5-QRCode Library for Web Camera Scanner -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- JsBarcode Library for Rendering Barcodes -->
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    
-    <!-- Firebase SDKs for Realtime Multi-User Sync -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-
     <style>
         @media print {
             .no-print { display: none !important; }
@@ -38,12 +33,8 @@
     <!-- Header -->
     <header class="bg-blue-700 text-white shadow-md sticky top-0 z-30 no-print">
         <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
                 <h1 class="text-lg sm:text-2xl font-bold tracking-wide">👷 Worker Attendance & OT</h1>
-                <!-- Live Cloud Sync Status Indicator -->
-                <span id="syncBadge" class="bg-amber-500 text-white text-[10px] sm:text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
-                    <span class="w-2 h-2 rounded-full bg-white animate-ping"></span> Connecting...
-                </span>
             </div>
             <div class="text-xs sm:text-sm bg-blue-800 px-3 py-1 rounded-md font-mono" id="liveClock">--:--:--</div>
         </div>
@@ -60,9 +51,6 @@
                 <button id="tabBtnDirectory" onclick="switchTab('directory')" class="px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition">
                     👥 Worker Directory
                 </button>
-                <button id="tabBtnSettings" onclick="switchTab('settings')" class="px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition">
-                    ⚙️ Cloud Settings
-                </button>
             </div>
         </div>
     </header>
@@ -73,7 +61,7 @@
         <div id="tabDailyView" class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
 
             <!-- Left Column: Scanner & Settings -->
-            <div class="space-y-4 sm:space-y-6">
+            <div class="space-y-4 sm:space-y-6 no-print">
 
                 <!-- Shift Settings Card -->
                 <div class="bg-white rounded-xl shadow-sm p-4 sm:p-5 border border-gray-200">
@@ -161,7 +149,7 @@
 
                 <!-- Main Logs Panel -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="p-4 sm:p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-3">
+                    <div class="p-4 sm:p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-3 no-print">
                         <div>
                             <h2 class="text-base sm:text-lg font-semibold text-gray-800">📋 Today's Attendance Logs</h2>
                             <p class="text-xs text-gray-500" id="currentDateDisplay"></p>
@@ -170,6 +158,9 @@
                             <button onclick="exportToCSV(true)" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition text-center">
                                 📥 CSV
                             </button>
+                            <button onclick="window.print()" class="flex-1 sm:flex-none bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition text-center">
+                                🖨️ Print
+                            </button>
                             <button onclick="clearTodayRecords()" class="flex-1 sm:flex-none bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium px-3 py-2 rounded-lg transition border border-red-200 text-center">
                                 🗑️ Clear Today
                             </button>
@@ -177,7 +168,7 @@
                     </div>
 
                     <!-- Filter Strip -->
-                    <div class="p-3 bg-slate-50 border-b border-gray-200 flex items-center gap-2 text-xs">
+                    <div class="p-3 bg-slate-50 border-b border-gray-200 flex items-center gap-2 text-xs no-print">
                         <span class="font-semibold text-gray-600">Filter:</span>
                         <select id="dailyFilterType" onchange="renderDailyTable()" class="border rounded px-2.5 py-1.5 bg-white text-xs">
                             <option value="ALL">All Worker Types</option>
@@ -187,7 +178,7 @@
                     </div>
 
                     <!-- Summary Stats Grid -->
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 sm:p-4 bg-gray-50 border-b border-gray-200 text-center">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 sm:p-4 bg-gray-50 border-b border-gray-200 text-center no-print">
                         <div class="bg-white p-2.5 sm:p-3 rounded-lg border shadow-sm">
                             <span class="block text-[11px] text-gray-500">Present Today</span>
                             <span class="text-base sm:text-lg font-bold text-blue-600" id="statPresent">0</span>
@@ -219,7 +210,7 @@
                                     <th class="py-3 px-4">Total Hrs</th>
                                     <th class="py-3 px-4">OT (Hrs)</th>
                                     <th class="py-3 px-4">Status</th>
-                                    <th class="py-3 px-4 text-right">Action</th>
+                                    <th class="py-3 px-4 text-right no-print">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="dailyTableBody" class="divide-y divide-gray-200 font-mono text-xs">
@@ -328,7 +319,7 @@
                 <div class="flex flex-wrap items-center gap-3">
                     <input type="file" id="csvFileInput" accept=".csv" class="block text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer border rounded-lg">
                     <button onclick="importWorkersCSV()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
-                        📥 Import & Sync Cloud
+                        📥 Import & Generate Barcodes
                     </button>
                     <button onclick="downloadCSVTemplate()" class="text-blue-600 hover:underline text-xs font-medium">
                         ⬇️ Download Sample CSV Template
@@ -403,76 +394,18 @@
             </div>
         </div>
 
-        <!-- TAB 4: FIREBASE / CLOUD SETTINGS -->
-        <div id="tabSettingsView" class="hidden space-y-4 sm:space-y-6">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 max-w-3xl mx-auto">
-                <h2 class="text-base sm:text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
-                    ☁️ Firebase Multi-User Sync Configuration
-                </h2>
-                <p class="text-xs text-gray-600 mb-4 leading-relaxed">
-                    Enter your Firebase Realtime Database configuration below. All connected users pointing to this database will see scan updates, overtime logs, and badge updates <strong>live in real-time</strong>.
-                </p>
-
-                <div class="space-y-3 font-mono text-xs">
-                    <div>
-                        <label class="block text-gray-500 font-sans mb-1 font-medium">API Key</label>
-                        <input type="text" id="cfgApiKey" class="w-full border rounded-lg p-2.5 bg-slate-50" placeholder="AIzaSy...">
-                    </div>
-                    <div>
-                        <label class="block text-gray-500 font-sans mb-1 font-medium">Database URL</label>
-                        <input type="text" id="cfgDbUrl" class="w-full border rounded-lg p-2.5 bg-slate-50" placeholder="https://your-project-id-default-rtdb.firebaseio.com">
-                    </div>
-                    <div>
-                        <label class="block text-gray-500 font-sans mb-1 font-medium">Project ID</label>
-                        <input type="text" id="cfgProjectId" class="w-full border rounded-lg p-2.5 bg-slate-50" placeholder="your-project-id">
-                    </div>
-                </div>
-
-                <div class="mt-5 flex flex-wrap gap-3">
-                    <button onclick="saveFirebaseConfig()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-5 py-2.5 rounded-lg transition">
-                        💾 Save & Reconnect Firebase
-                    </button>
-                    <button onclick="useLocalStorageFallback()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold text-xs px-4 py-2.5 rounded-lg transition">
-                        🏠 Fallback to Local Offline Storage
-                    </button>
-                </div>
-
-                <div class="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800 space-y-1">
-                    <p class="font-bold">⚡ How multi-user synchronization works:</p>
-                    <ul class="list-disc list-inside space-y-0.5 text-[11px] text-blue-700">
-                        <li>Realtime WebSocket connection keeps all devices synced within &lt;100ms.</li>
-                        <li>If a scanner device goes offline, local updates persist and auto-sync when reconnected.</li>
-                        <li>Multiple gate-keepers or shift supervisors can scan concurrently.</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
     </main>
 
     <!-- JavaScript Logic -->
     <script>
-        // Fallback default dataset
-        const DEFAULT_WORKERS = {
+        let workers = JSON.parse(localStorage.getItem('workersDirectory')) || {
             "W101": { name: "Rajesh Kumar", dept: "Assembly", type: "Regular", agency: "-" },
             "W102": { name: "Amit Sharma", dept: "Quality", type: "Regular", agency: "-" },
             "W103": { name: "Suresh Patil", dept: "Packaging", type: "Contractor", agency: "Apex Manpower" }
         };
 
-        // Default Firebase Config (Users can update via Cloud Settings Tab)
-        let firebaseConfig = JSON.parse(localStorage.getItem('customFirebaseConfig')) || {
-            apiKey: "AIzaSyCMXQY6Y1VWNQUnH-utEdpAxk0qxSqtdvw",
-            authDomain: "attendance-afd2a.firebaseapp.com",
-            databaseURL: "https://demo-attendance-default-rtdb.firebaseio.com",
-            projectId: "attendance-afd2a"
-        };
-
-        let db = null;
-        let isCloudConnected = false;
-
-        let workers = {};
-        let attendanceLogs = [];
-        let lastScanTimestamps = {};
+        let attendanceLogs = JSON.parse(localStorage.getItem('attendanceLogs')) || [];
+        let lastScanTimestamps = JSON.parse(localStorage.getItem('lastScanTimestamps')) || {};
         let selectedWorkerIds = new Set();
         let html5QrcodeScanner = null;
         let activeBadgeWorker = null;
@@ -483,13 +416,9 @@
             document.getElementById('currentDateDisplay').innerText = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
             updateClock();
             setInterval(updateClock, 1000);
-
-            // Populate Settings Inputs
-            document.getElementById('cfgApiKey').value = firebaseConfig.apiKey || '';
-            document.getElementById('cfgDbUrl').value = firebaseConfig.databaseURL || '';
-            document.getElementById('cfgProjectId').value = firebaseConfig.projectId || '';
-
-            initFirebaseSync();
+            
+            populateDepartmentDropdowns();
+            renderDailyTable();
 
             const barcodeInput = document.getElementById('barcodeInput');
             if (barcodeInput) barcodeInput.focus();
@@ -505,97 +434,6 @@
             });
         });
 
-        // Initialize Firebase Realtime Database Sync
-        function initFirebaseSync() {
-            try {
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                }
-                db = firebase.database();
-
-                // Live Connection State Monitoring
-                db.ref('.info/connected').on('value', (snap) => {
-                    if (snap.val() === true) {
-                        isCloudConnected = true;
-                        updateSyncBadge('ONLINE', 'bg-emerald-600');
-                    } else {
-                        isCloudConnected = false;
-                        updateSyncBadge('OFFLINE / LOCAL', 'bg-amber-600');
-                    }
-                });
-
-                // Real-time listener: Workers Directory
-                db.ref('workersDirectory').on('value', (snapshot) => {
-                    const data = snapshot.val();
-                    workers = data || JSON.parse(localStorage.getItem('workersDirectory')) || DEFAULT_WORKERS;
-                    localStorage.setItem('workersDirectory', JSON.stringify(workers));
-                    populateDepartmentDropdowns();
-                    renderDirectoryTable();
-                });
-
-                // Real-time listener: Attendance Logs
-                db.ref('attendanceLogs').on('value', (snapshot) => {
-                    const data = snapshot.val();
-                    attendanceLogs = data || JSON.parse(localStorage.getItem('attendanceLogs')) || [];
-                    localStorage.setItem('attendanceLogs', JSON.stringify(attendanceLogs));
-                    renderDailyTable();
-                    renderHistoryTable();
-                });
-
-                // Real-time listener: Scan Timestamps Cooldown
-                db.ref('lastScanTimestamps').on('value', (snapshot) => {
-                    lastScanTimestamps = snapshot.val() || JSON.parse(localStorage.getItem('lastScanTimestamps')) || {};
-                    localStorage.setItem('lastScanTimestamps', JSON.stringify(lastScanTimestamps));
-                });
-
-            } catch (err) {
-                console.warn("Firebase init skipped or invalid config. Falling back to Local Storage.", err);
-                loadLocalFallbackData();
-            }
-        }
-
-        function loadLocalFallbackData() {
-            isCloudConnected = false;
-            updateSyncBadge('LOCAL STORAGE MODE', 'bg-slate-600');
-            workers = JSON.parse(localStorage.getItem('workersDirectory')) || DEFAULT_WORKERS;
-            attendanceLogs = JSON.parse(localStorage.getItem('attendanceLogs')) || [];
-            lastScanTimestamps = JSON.parse(localStorage.getItem('lastScanTimestamps')) || {};
-            populateDepartmentDropdowns();
-            renderDailyTable();
-            renderHistoryTable();
-            renderDirectoryTable();
-        }
-
-        function syncToCloud(path, value) {
-            localStorage.setItem(path, typeof value === 'object' ? JSON.stringify(value) : value);
-            if (db && isCloudConnected) {
-                db.ref(path).set(value).catch(err => console.error("Cloud push failed:", err));
-            }
-        }
-
-        function updateSyncBadge(text, bgClass) {
-            const badge = document.getElementById('syncBadge');
-            badge.className = `${bgClass} text-white text-[10px] sm:text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm`;
-            badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-white"></span> ${text}`;
-        }
-
-        function saveFirebaseConfig() {
-            const config = {
-                apiKey: document.getElementById('cfgApiKey').value.trim(),
-                databaseURL: document.getElementById('cfgDbUrl').value.trim(),
-                projectId: document.getElementById('cfgProjectId').value.trim()
-            };
-            localStorage.setItem('customFirebaseConfig', JSON.stringify(config));
-            alert("Firebase configuration updated! Reloading to apply live database sync...");
-            window.location.reload();
-        }
-
-        function useLocalStorageFallback() {
-            localStorage.removeItem('customFirebaseConfig');
-            alert("Switched to offline local storage mode.");
-            window.location.reload();
-        }
-
         function updateClock() {
             document.getElementById('liveClock').innerText = new Date().toLocaleTimeString('en-IN');
         }
@@ -604,12 +442,10 @@
             document.getElementById('tabDailyView').classList.add('hidden');
             document.getElementById('tabHistoryView').classList.add('hidden');
             document.getElementById('tabDirectoryView').classList.add('hidden');
-            document.getElementById('tabSettingsView').classList.add('hidden');
 
             document.getElementById('tabBtnDaily').className = "px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition";
             document.getElementById('tabBtnHistory').className = "px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition";
             document.getElementById('tabBtnDirectory').className = "px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition";
-            document.getElementById('tabBtnSettings').className = "px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition";
 
             if (tab === 'daily') {
                 document.getElementById('tabDailyView').classList.remove('hidden');
@@ -623,9 +459,6 @@
                 document.getElementById('tabDirectoryView').classList.remove('hidden');
                 document.getElementById('tabBtnDirectory').className = "px-3 py-2 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition";
                 renderDirectoryTable();
-            } else if (tab === 'settings') {
-                document.getElementById('tabSettingsView').classList.remove('hidden');
-                document.getElementById('tabBtnSettings').className = "px-3 py-2 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition";
             }
         }
 
@@ -650,11 +483,12 @@
             if (!id || !name) return;
 
             workers[id] = { name, dept, type, agency };
-            syncToCloud('workersDirectory', workers);
-
+            localStorage.setItem('workersDirectory', JSON.stringify(workers));
+            populateDepartmentDropdowns();
+            
             generateBarcodeBadge(id, name, dept, type, agency);
 
-            showAlert(`Worker ${name} (${id}) registered across all connected devices!`, 'bg-green-100 border-green-400 text-green-700');
+            showAlert(`Worker ${name} (${id}) registered! Ready to print badge.`, 'bg-green-100 border-green-400 text-green-700');
             document.getElementById('addWorkerForm').reset();
             document.getElementById('agencyInputGroup').classList.add('hidden');
         }
@@ -703,7 +537,7 @@
                     <p class="text-[10px] font-semibold text-blue-600 mb-0.5">${w.type === 'Contractor' ? `Contractor - ${w.agency}` : 'Regular Employee'}</p>
                     <p class="text-xs font-semibold text-gray-600 mb-2">Dept: ${w.dept || 'General'}</p>
                     <svg id="print_svg_${id}" class="mx-auto"></svg>
-                    <p class="text-[9px] mt-1 text-gray-500">Worker ID Badge</p>
+                    <p class="text-[9px] mt-1 text-gray-500">Worker ID: ${id}</p>
                 `;
                 container.appendChild(badgeDiv);
 
@@ -749,7 +583,7 @@
                 let importedCount = 0;
 
                 lines.forEach((line, index) => {
-                    if (index === 0 || !line.trim()) return;
+                    if (index === 0 || !line.trim()) return; // Skip header/empty lines
 
                     const parts = line.split(',').map(p => p.trim().replace(/^"(.*)"$/, '$1'));
                     if (parts.length >= 2) {
@@ -766,8 +600,10 @@
                     }
                 });
 
-                syncToCloud('workersDirectory', workers);
-                alert(`Successfully imported and synchronized ${importedCount} worker profiles!`);
+                localStorage.setItem('workersDirectory', JSON.stringify(workers));
+                populateDepartmentDropdowns();
+                renderDirectoryTable();
+                alert(`Successfully imported ${importedCount} worker profiles into directory!`);
                 fileInput.value = '';
             };
             reader.readAsText(file);
@@ -790,7 +626,9 @@
             if (confirm(`Are you sure you want to delete ${workers[id]?.name || id} from directory?`)) {
                 delete workers[id];
                 selectedWorkerIds.delete(id);
-                syncToCloud('workersDirectory', workers);
+                localStorage.setItem('workersDirectory', JSON.stringify(workers));
+                populateDepartmentDropdowns();
+                renderDirectoryTable();
             }
         }
 
@@ -851,8 +689,10 @@
             }
 
             lastScanTimestamps[scannedId] = nowTime;
-            syncToCloud('lastScanTimestamps', lastScanTimestamps);
-            syncToCloud('attendanceLogs', attendanceLogs);
+            localStorage.setItem('lastScanTimestamps', JSON.stringify(lastScanTimestamps));
+
+            localStorage.setItem('attendanceLogs', JSON.stringify(attendanceLogs));
+            renderDailyTable();
         }
 
         function calculateOvertime(record) {
@@ -873,6 +713,7 @@
             let diffMs = outDate - inDate;
             let totalHours = Math.max(0, diffMs / (1000 * 60 * 60));
 
+            // OT Rule: Calculate OT above shift hours ONLY if worked >= 30 mins over shift
             let otHours = 0;
             if (totalHours >= (shiftHrs + 0.5)) {
                 otHours = totalHours - shiftHrs;
@@ -888,7 +729,9 @@
                     calculateOvertime(record);
                 }
             });
-            syncToCloud('attendanceLogs', attendanceLogs);
+            localStorage.setItem('attendanceLogs', JSON.stringify(attendanceLogs));
+            renderDailyTable();
+            renderHistoryTable();
         }
 
         function editManualOT(index) {
@@ -901,7 +744,9 @@
                 if (!isNaN(parsedOT) && parsedOT >= 0) {
                     record.otHours = parsedOT.toFixed(2);
                     record.manualOT = true;
-                    syncToCloud('attendanceLogs', attendanceLogs);
+                    localStorage.setItem('attendanceLogs', JSON.stringify(attendanceLogs));
+                    renderDailyTable();
+                    renderHistoryTable();
                     showAlert(`✏️ Manual OT set to ${record.otHours} hrs for ${record.name}`, 'bg-blue-100 border-blue-400 text-blue-800');
                 } else {
                     alert("Invalid overtime value. Please enter a positive number.");
@@ -1257,9 +1102,9 @@
                 csv += `"${r.date}","${r.id}","${r.name}","${r.type || 'Regular'}","${r.agency || '-'}","${r.inTime}","${r.outTime || ''}","${r.totalHours}","${r.otHours}","${r.manualOT ? 'YES' : 'NO'}","${r.status}"\n`;
             });
 
-            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const blob = new Blob([csv], { type: "text/css;charset=utf-8;" }); // using proper blob type
             const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
+            link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
             link.setAttribute("download", `Worker_Attendance_${todayOnly ? 'Today' : 'Export'}_${new Date().toISOString().split('T')[0]}.csv`);
             document.body.appendChild(link);
             link.click();
@@ -1270,14 +1115,17 @@
             if (confirm("Are you sure you want to clear today's attendance logs?")) {
                 const todayStr = new Date().toISOString().split('T')[0];
                 attendanceLogs = attendanceLogs.filter(r => r.date !== todayStr);
-                syncToCloud('attendanceLogs', attendanceLogs);
+                localStorage.setItem('attendanceLogs', JSON.stringify(attendanceLogs));
+                renderDailyTable();
             }
         }
 
         function clearAllRecords() {
             if (confirm("Are you sure you want to permanently clear ALL historical attendance logs?")) {
                 attendanceLogs = [];
-                syncToCloud('attendanceLogs', attendanceLogs);
+                localStorage.setItem('attendanceLogs', JSON.stringify(attendanceLogs));
+                renderDailyTable();
+                renderHistoryTable();
             }
         }
     </script>
