@@ -58,7 +58,7 @@
     <!-- Header -->
     <header class="bg-blue-700 text-white shadow-md sticky top-0 z-30 no-print">
         <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-3">
                 <h1 class="text-lg sm:text-2xl font-bold tracking-wide flex items-center gap-2">
                     <span>👷</span> Worker Attendance & OT
                 </h1>
@@ -67,6 +67,8 @@
                     <span id="syncStatusText">Connecting...</span>
                 </span>
             </div>
+         
+
             <div class="flex items-center gap-3">
                 <div class="text-xs sm:text-sm bg-blue-800 px-3 py-1 rounded-md font-mono" id="liveClock">--:--:--</div>
                 <div class="text-[11px] bg-blue-900/60 text-blue-100 px-2.5 py-1 rounded font-mono hidden md:block" id="userBadge">
@@ -494,7 +496,8 @@
         let logsUnsub = null;
         let workersSnapshotReady = false;
         let logsSnapshotReady = false;
-        let pendingClearAction = null; // 'today' or 'all'
+        let pendingClearAction = null; // 'today', 'all', or 'single'
+        let targetSingleLogDocKey = null; // Stores document key for individual log deletion
 
         const SCAN_COOLDOWN_MS = 5 * 60 * 1000;
         const ADMIN_CLEAR_PASSWORD = "admin123"; // Password for clearing logs
@@ -639,6 +642,7 @@
         window.exportToCSV = exportToCSV;
         window.promptClearTodayRecords = promptClearTodayRecords;
         window.promptClearAllRecords = promptClearAllRecords;
+        window.promptDeleteSingleLog = promptDeleteSingleLog;
         window.closeClearAuthModal = closeClearAuthModal;
         window.executeConfirmedClear = executeConfirmedClear;
 
@@ -1028,6 +1032,7 @@
         // Clear Log Authentication Flow
         function promptClearTodayRecords() {
             pendingClearAction = 'today';
+            targetSingleLogDocKey = null;
             document.getElementById('clearAuthPromptText').innerText = "Enter administrator password to clear today's attendance logs.";
             document.getElementById('clearAuthPassword').value = '';
             document.getElementById('clearAuthModal').classList.remove('hidden');
@@ -1036,7 +1041,17 @@
 
         function promptClearAllRecords() {
             pendingClearAction = 'all';
+            targetSingleLogDocKey = null;
             document.getElementById('clearAuthPromptText').innerText = "Enter administrator password to clear ALL historical attendance logs.";
+            document.getElementById('clearAuthPassword').value = '';
+            document.getElementById('clearAuthModal').classList.remove('hidden');
+            document.getElementById('clearAuthPassword').focus();
+        }
+
+        function promptDeleteSingleLog(docKey, workerName) {
+            pendingClearAction = 'single';
+            targetSingleLogDocKey = docKey;
+            document.getElementById('clearAuthPromptText').innerText = `Enter administrator password to delete attendance log for "${workerName}".`;
             document.getElementById('clearAuthPassword').value = '';
             document.getElementById('clearAuthModal').classList.remove('hidden');
             document.getElementById('clearAuthPassword').focus();
@@ -1045,38 +1060,42 @@
         function closeClearAuthModal() {
             document.getElementById('clearAuthModal').classList.add('hidden');
             pendingClearAction = null;
+            targetSingleLogDocKey = null;
         }
 
         async function executeConfirmedClear() {
-    const passwordInput = document.getElementById('clearAuthPassword').value;
+            const passwordInput = document.getElementById('clearAuthPassword').value;
 
-    if (passwordInput !== ADMIN_CLEAR_PASSWORD) {
-        alert("Incorrect clearance password! Action denied.");
-        return;
-    }
+            if (passwordInput !== ADMIN_CLEAR_PASSWORD) {
+                alert("Incorrect clearance password! Action denied.");
+                return;
+            }
 
-    // Store the action BEFORE closing the modal
-    const action = pendingClearAction;
+            const action = pendingClearAction;
+            const singleDocKey = targetSingleLogDocKey;
 
-    if (!action) {
-        alert("No clear operation selected. Please try again.");
-        return;
-    }
+            if (!action) {
+                alert("No operation selected. Please try again.");
+                return;
+            }
 
-    closeClearAuthModal();
+            closeClearAuthModal();
 
-    try {
-        if (action === 'today') {
-            await clearTodayRecordsConfirmed();
-        } 
-        else if (action === 'all') {
-            await clearAllRecordsConfirmed();
+            try {
+                if (action === 'today') {
+                    await clearTodayRecordsConfirmed();
+                } 
+                else if (action === 'all') {
+                    await clearAllRecordsConfirmed();
+                }
+                else if (action === 'single' && singleDocKey) {
+                    await deleteSingleLogConfirmed(singleDocKey);
+                }
+            } catch (error) {
+                console.error("Clear logs error:", error);
+                alert("Unable to complete operation: " + error.message);
+            }
         }
-    } catch (error) {
-        console.error("Clear logs error:", error);
-        alert("Unable to clear attendance logs: " + error.message);
-    }
-}
 
         async function clearTodayRecordsConfirmed() {
             if (!currentUser) return;
@@ -1097,6 +1116,12 @@
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docKey));
             }
             showAlert("Cleared all historical records from cloud with password authentication.", "bg-amber-100 border-amber-400 text-amber-800");
+        }
+
+        async function deleteSingleLogConfirmed(docKey) {
+            if (!currentUser) return;
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docKey));
+            showAlert("Attendance log successfully deleted.", "bg-amber-100 border-amber-400 text-amber-800");
         }
 
         function renderDailyTable() {
@@ -1134,6 +1159,9 @@
             } else {
                 todayLogs.forEach((r) => {
                     let globalIndex = attendanceLogs.indexOf(r);
+                    let docKey = r.docId || `${r.date}_${r.id}`;
+                    let safeName = r.name.replace(/'/g, "\\'");
+
                     let typeBadge = r.type === 'Contractor'
                         ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold text-[10px]">Contractor (${r.agency || 'Independent'})</span>`
                         : `<span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-semibold text-[10px]">Regular</span>`;
@@ -1156,14 +1184,15 @@
                             <td class="py-3 px-4 font-bold">${r.totalHours || '0.00'}</td>
                             <td class="py-3 px-4 font-bold">${otDisplay}</td>
                             <td class="py-3 px-4">${statusBadge}</td>
-                            <td class="py-3 px-4 text-right no-print">
-                                <button onclick="editManualOT(${globalIndex})" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold underline bg-blue-50 px-2 py-1 rounded border border-blue-200">✏️ Edit OT</button>
+                            <td class="py-3 px-4 text-right no-print flex justify-end gap-1.5 items-center">
+                                <button onclick="editManualOT(${globalIndex})" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold underline bg-blue-50 px-2 py-1 rounded border border-blue-200">✏️ OT</button>
+                                <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="text-red-600 hover:text-red-800 text-[11px] font-semibold bg-red-50 px-2 py-1 rounded border border-red-200">🗑️ Delete</button>
                             </td>
                         </tr>
                     `;
 
                     mobileList.innerHTML += `
-                        <div class="p-4 bg-white space-y-2">
+                        <div class="p-4 bg-white space-y-2 border-b">
                             <div class="flex justify-between items-start">
                                 <div>
                                     <span class="font-bold text-gray-800 text-sm font-mono">${r.id}</span> - 
@@ -1178,8 +1207,9 @@
                                 <div><span class="text-gray-500 block text-[10px]">TOTAL WORK</span><span class="font-bold">${r.totalHours || '0.00'} hrs</span></div>
                                 <div><span class="text-gray-500 block text-[10px]">OVERTIME</span><span class="font-bold">${otDisplay} hrs</span></div>
                             </div>
-                            <div class="pt-1 text-right no-print">
-                                <button onclick="editManualOT(${globalIndex})" class="w-full bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 py-1.5 rounded text-xs font-semibold">✏️ Edit Manual OT</button>
+                            <div class="flex gap-2 pt-1 no-print">
+                                <button onclick="editManualOT(${globalIndex})" class="flex-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 py-1.5 rounded text-xs font-semibold">✏️ Edit Manual OT</button>
+                                <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded text-xs font-semibold">🗑️ Delete</button>
                             </div>
                         </div>
                     `;
@@ -1228,6 +1258,9 @@
             } else {
                 [...filteredLogs].reverse().forEach((r) => {
                     let globalIndex = attendanceLogs.indexOf(r);
+                    let docKey = r.docId || `${r.date}_${r.id}`;
+                    let safeName = r.name.replace(/'/g, "\\'");
+
                     let typeBadge = r.type === 'Contractor'
                         ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold text-[10px]">Contractor (${r.agency || 'Independent'})</span>`
                         : `<span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-semibold text-[10px]">Regular</span>`;
@@ -1251,14 +1284,15 @@
                             <td class="py-3 px-4 font-bold">${r.totalHours || '0.00'}</td>
                             <td class="py-3 px-4 font-bold">${otDisplay}</td>
                             <td class="py-3 px-4">${statusBadge}</td>
-                            <td class="py-3 px-4 text-right">
-                                <button onclick="editManualOT(${globalIndex})" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold underline bg-blue-50 px-2 py-1 rounded border border-blue-200">✏️ Edit OT</button>
+                            <td class="py-3 px-4 text-right flex justify-end gap-1.5 items-center">
+                                <button onclick="editManualOT(${globalIndex})" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold underline bg-blue-50 px-2 py-1 rounded border border-blue-200">✏️ OT</button>
+                                <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="text-red-600 hover:text-red-800 text-[11px] font-semibold bg-red-50 px-2 py-1 rounded border border-red-200">🗑️ Delete</button>
                             </td>
                         </tr>
                     `;
 
                     mobileList.innerHTML += `
-                        <div class="p-4 bg-white space-y-2">
+                        <div class="p-4 bg-white space-y-2 border-b">
                             <div class="flex justify-between items-center text-xs text-gray-500">
                                 <span class="font-bold text-gray-700">${r.date}</span>
                                 ${statusBadge}
@@ -1274,8 +1308,9 @@
                                 <div><span class="text-gray-500 block text-[10px]">TOTAL WORK</span><span class="font-bold">${r.totalHours || '0.00'} hrs</span></div>
                                 <div><span class="text-gray-500 block text-[10px]">OVERTIME</span><span class="font-bold">${otDisplay} hrs</span></div>
                             </div>
-                            <div class="pt-1 text-right">
-                                <button onclick="editManualOT(${globalIndex})" class="w-full bg-blue-50 text-blue-700 border border-blue-200 py-1.5 rounded text-xs font-semibold">✏️ Edit Manual OT</button>
+                            <div class="flex gap-2 pt-1">
+                                <button onclick="editManualOT(${globalIndex})" class="flex-1 bg-blue-50 text-blue-700 border border-blue-200 py-1.5 rounded text-xs font-semibold">✏️ Edit Manual OT</button>
+                                <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded text-xs font-semibold">🗑️ Delete</button>
                             </div>
                         </div>
                     `;
