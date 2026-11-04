@@ -3,13 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Worker Attendance & Overtime Tracker (Firebase Sync)</title>
+    <title>Worker Attendance & Overtime Tracker (Firebase Cloud Synced)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Html5-QRCode Library for Web Camera Scanner -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- JsBarcode Library for Rendering Barcodes -->
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+    <!-- Firebase App, Firestore, and Analytics Compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
+
     <style>
         @media print {
             .no-print { display: none !important; }
@@ -62,9 +68,9 @@
                 <h1 class="text-base sm:text-xl font-bold tracking-wide flex items-center gap-1.5">
                     <span>👷</span> Worker Attendance & OT
                 </h1>
-                <span id="syncStatus" class="bg-blue-900 text-blue-200 text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1 font-mono">
+                <span id="syncStatus" class="bg-blue-900 text-blue-200 text-[11px] px-2.5 py-0.5 rounded-full flex items-center gap-1.5 font-mono">
                     <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse" id="syncStatusDot"></span>
-                    <span id="syncStatusText">Connecting...</span>
+                    <span id="syncStatusText">Connecting Cloud...</span>
                 </span>
             </div>
 
@@ -302,7 +308,9 @@
                 <div class="bg-white rounded-lg shadow-sm p-3 border border-gray-200">
                     <h2 class="text-sm font-bold text-gray-700 mb-1.5 flex items-center justify-between">
                         <span>📷 Scan Worker ID</span>
-                        <span class="text-[10px] text-gray-400 font-normal">Auto Sync</span>
+                        <span class="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Multi-User Realtime
+                        </span>
                     </h2>
                     
                     <div class="mb-2">
@@ -445,7 +453,7 @@
                         </div>
                     </div>
 
-                    <!-- Desktop Table View (Max Height Capped with Checkboxes for Bulk Selection) -->
+                    <!-- Desktop Table View -->
                     <div class="hidden sm:block overflow-x-auto overflow-y-auto max-h-[calc(100vh-280px)]">
                         <table class="w-full text-left text-xs">
                             <thead class="bg-gray-100 text-gray-600 uppercase text-[10px] tracking-wider border-b sticky top-0 z-10">
@@ -488,7 +496,7 @@
                 <div class="p-4 sm:p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-3">
                     <div>
                         <h2 class="text-base sm:text-lg font-semibold text-gray-800">📜 All Attendance History Logs</h2>
-                        <p class="text-xs text-gray-500">View, edit, delete, and export historical punches across dates (Synced in Realtime).</p>
+                        <p class="text-xs text-gray-500">View, edit, delete, and export historical punches across dates (Synced in Realtime via Cloud Firestore).</p>
                     </div>
                     <div class="flex gap-2 w-full sm:w-auto">
                         <button onclick="deleteSelectedHistoryLogs()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition text-center flex items-center gap-1 shadow-sm">
@@ -643,6 +651,22 @@
 
     <!-- JavaScript Application Logic -->
     <script>
+        // --- Firebase Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCMXQY6Y1VWNQUnH-utEdpAxk0qxSqtdvw",
+            authDomain: "attendance-afd2a.firebaseapp.com",
+            projectId: "attendance-afd2a",
+            storageBucket: "attendance-afd2a.firebasestorage.app",
+            messagingSenderId: "546193787959",
+            appId: "1:546193787959:web:736a11b4ee2b5d67a9c3b2",
+            measurementId: "G-F3DC9JF4TW"
+        };
+
+        // Initialize Firebase SDKs
+        const app = firebase.initializeApp(firebaseConfig);
+        const analytics = firebase.analytics();
+        const db = firebase.firestore();
+
         // --- Web Audio API Scan Beep Synthesizer ---
         let audioCtx = null;
 
@@ -708,13 +732,16 @@
         let selectedWorkerForMod = null;
         let selectedWorkerForEdit = null;
 
-        // Initialize App
+        // Initialize App & Attach Realtime Cloud Listeners
         window.addEventListener('DOMContentLoaded', () => {
-            loadLocalStorageData();
             initLiveClock();
-            updateSyncStatus('connected', 'Live Storage Ready');
-            updateUserUI();
+            updateSyncStatus('syncing', 'Connecting to Cloud Firestore...');
             
+            // Restore local session state if active
+            const activeUser = localStorage.getItem('wt_active_user');
+            if (activeUser) currentUser = JSON.parse(activeUser);
+            updateUserUI();
+
             // Set current date display
             const todayStr = getTodayDateString();
             document.getElementById('currentDateDisplay').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -734,11 +761,87 @@
                 }
             });
 
-            // Initial Renders
-            renderDailyTable();
-            renderHistoryTable();
-            renderDirectoryTable();
+            // Setup Firestore Real-Time Cloud Listeners
+            setupFirestoreRealtimeListeners();
         });
+
+        // --- Firebase Firestore Real-Time Synchronizer ---
+        function setupFirestoreRealtimeListeners() {
+            // Listen for Worker Directory updates across all users
+            db.collection("attendanceApp").doc("workersDirectory").onSnapshot((doc) => {
+                if (doc.exists && doc.data().data) {
+                    workersDirectory = doc.data().data;
+                    renderDirectoryTable();
+                }
+            }, (error) => {
+                console.error("Firestore Workers sync error:", error);
+                updateSyncStatus('error', 'Directory Sync Error');
+            });
+
+            // Listen for Attendance Log updates (Punches/Edits/Deletions) in real-time
+            db.collection("attendanceApp").doc("attendanceLogs").onSnapshot((doc) => {
+                if (doc.exists && doc.data().data) {
+                    attendanceLogs = doc.data().data;
+                    renderDailyTable();
+                    if (!document.getElementById('tabHistoryView').classList.contains('hidden')) {
+                        renderHistoryTable();
+                    }
+                }
+                updateSyncStatus('connected', 'Cloud Firestore Synced (Multi-User)');
+            }, (error) => {
+                console.error("Firestore Logs sync error:", error);
+                updateSyncStatus('error', 'Logs Sync Error');
+            });
+
+            // Listen for System User accounts updates
+            db.collection("attendanceApp").doc("registeredUsers").onSnapshot((doc) => {
+                if (doc.exists && doc.data().data) {
+                    registeredUsers = doc.data().data;
+                } else {
+                    saveToCloud(); // Push initial default users
+                }
+            }, (error) => {
+                console.error("Firestore Users sync error:", error);
+            });
+        }
+
+        // --- Save Data to Cloud Firestore & Local Backup ---
+        function saveToCloud() {
+            updateSyncStatus('syncing', 'Syncing to Cloud...');
+
+            db.collection("attendanceApp").doc("workersDirectory").set({ data: workersDirectory })
+                .catch(err => console.error("Cloud Worker directory save failed:", err));
+
+            db.collection("attendanceApp").doc("attendanceLogs").set({ data: attendanceLogs })
+                .catch(err => console.error("Cloud Attendance logs save failed:", err));
+
+            db.collection("attendanceApp").doc("registeredUsers").set({ data: registeredUsers })
+                .catch(err => console.error("Cloud Registered users save failed:", err));
+
+            if (currentUser) {
+                localStorage.setItem('wt_active_user', JSON.stringify(currentUser));
+            } else {
+                localStorage.removeItem('wt_active_user');
+            }
+        }
+
+        // Drop-in wrapper to maintain existing interface
+        function saveToLocalStorage() {
+            saveToCloud();
+        }
+
+        function updateSyncStatus(state, text) {
+            const dot = document.getElementById('syncStatusDot');
+            const txt = document.getElementById('syncStatusText');
+            txt.textContent = text;
+            if (state === 'connected') {
+                dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+            } else if (state === 'syncing') {
+                dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+            } else {
+                dot.className = "w-2 h-2 rounded-full bg-red-400";
+            }
+        }
 
         // --- Date & Time Helpers ---
         function getTodayDateString() {
@@ -761,45 +864,6 @@
                 const now = new Date();
                 document.getElementById('liveClock').textContent = now.toLocaleTimeString();
             }, 1000);
-        }
-
-        // --- Storage Management ---
-        function loadLocalStorageData() {
-            const savedWorkers = localStorage.getItem('wt_workers_dir');
-            if (savedWorkers) workersDirectory = JSON.parse(savedWorkers);
-
-            const savedLogs = localStorage.getItem('wt_attendance_logs');
-            if (savedLogs) attendanceLogs = JSON.parse(savedLogs);
-
-            const savedUsers = localStorage.getItem('wt_registered_users');
-            if (savedUsers) registeredUsers = JSON.parse(savedUsers);
-
-            const activeUser = localStorage.getItem('wt_active_user');
-            if (activeUser) currentUser = JSON.parse(activeUser);
-        }
-
-        function saveToLocalStorage() {
-            localStorage.setItem('wt_workers_dir', JSON.stringify(workersDirectory));
-            localStorage.setItem('wt_attendance_logs', JSON.stringify(attendanceLogs));
-            localStorage.setItem('wt_registered_users', JSON.stringify(registeredUsers));
-            if (currentUser) {
-                localStorage.setItem('wt_active_user', JSON.stringify(currentUser));
-            } else {
-                localStorage.removeItem('wt_active_user');
-            }
-        }
-
-        function updateSyncStatus(state, text) {
-            const dot = document.getElementById('syncStatusDot');
-            const txt = document.getElementById('syncStatusText');
-            txt.textContent = text;
-            if (state === 'connected') {
-                dot.className = "w-2 h-2 rounded-full bg-emerald-400";
-            } else if (state === 'syncing') {
-                dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
-            } else {
-                dot.className = "w-2 h-2 rounded-full bg-red-400";
-            }
         }
 
         // --- Navigation ---
@@ -830,7 +894,7 @@
 
         // --- Core Punch / Barcode Logic ---
         function processBarcodeScan(barcodeId) {
-            playScanBeep(); // Trigger audio confirmation on mobile/desktop
+            playScanBeep(); // Trigger audio confirmation
             const cleanId = barcodeId.trim();
             if (!cleanId) return;
 
@@ -845,7 +909,7 @@
                     agency: ''
                 };
                 workersDirectory[cleanId] = worker;
-                saveToLocalStorage();
+                saveToCloud();
                 renderDirectoryTable();
             }
 
@@ -890,7 +954,7 @@
                 }
             }
 
-            saveToLocalStorage();
+            saveToCloud();
             renderDailyTable();
             if (!document.getElementById('tabHistoryView').classList.contains('hidden')) {
                 renderHistoryTable();
@@ -930,7 +994,7 @@
 
         function recalculateAllOT() {
             attendanceLogs.forEach(calculateLogHours);
-            saveToLocalStorage();
+            saveToCloud();
             renderDailyTable();
             renderHistoryTable();
         }
@@ -1041,7 +1105,7 @@
                 mobileList.appendChild(card);
             });
 
-            // Update Stats (Both mini strip and top prominent metric blocks)
+            // Update Stats
             document.getElementById('statPresent').textContent = presentCount;
             document.getElementById('statContractors').textContent = contractorCount;
             document.getElementById('statCompleted').textContent = completedCount;
@@ -1091,7 +1155,7 @@
                 const selectAll = document.getElementById('selectAllDailyCheckbox');
                 if (selectAll) selectAll.checked = false;
                 
-                saveToLocalStorage();
+                saveToCloud();
                 renderDailyTable();
                 renderHistoryTable();
                 showAlert("🗑️ Selected attendance logs deleted successfully.", "info");
@@ -1108,7 +1172,7 @@
                 attendanceLogs = attendanceLogs.filter(l => l.id !== logId);
                 selectedDailyLogs.delete(logId);
                 selectedHistoryLogs.delete(logId);
-                saveToLocalStorage();
+                saveToCloud();
                 renderDailyTable();
                 renderHistoryTable();
                 showAlert("🗑️ Attendance entry deleted successfully.", "info");
@@ -1258,7 +1322,7 @@
                 const selectAll = document.getElementById('selectAllHistoryCheckbox');
                 if (selectAll) selectAll.checked = false;
 
-                saveToLocalStorage();
+                saveToCloud();
                 renderDailyTable();
                 renderHistoryTable();
                 alert("Selected history logs deleted successfully.");
@@ -1423,7 +1487,7 @@
             selectedWorkerForEdit.type = type;
             selectedWorkerForEdit.agency = agency;
 
-            saveToLocalStorage();
+            saveToCloud();
             renderDirectoryTable();
             renderDailyTable();
             renderHistoryTable();
@@ -1441,7 +1505,7 @@
             if (confirm(`⚠️ Are you sure you want to delete worker "${workerName}" (ID: ${workerId}) from the directory?`)) {
                 delete workersDirectory[workerId];
                 selectedDirWorkers.delete(workerId);
-                saveToLocalStorage();
+                saveToCloud();
                 renderDirectoryTable();
                 alert(`Worker ${workerName} deleted from directory.`);
             }
@@ -1475,7 +1539,7 @@
             selectedWorkerForMod.outTime = '';
             selectedWorkerForMod.status = 'IN';
             calculateLogHours(selectedWorkerForMod);
-            saveToLocalStorage();
+            saveToCloud();
             renderDailyTable();
             renderHistoryTable();
             closeModifyOutTimeModal();
@@ -1489,7 +1553,7 @@
             selectedWorkerForMod.outTime = newTime;
             selectedWorkerForMod.status = 'OUT';
             calculateLogHours(selectedWorkerForMod);
-            saveToLocalStorage();
+            saveToCloud();
             renderDailyTable();
             renderHistoryTable();
             closeModifyOutTimeModal();
@@ -1518,7 +1582,7 @@
 
             const worker = { id, name, dept, type, agency };
             workersDirectory[id] = worker;
-            saveToLocalStorage();
+            saveToCloud();
 
             // Render Preview Card
             document.getElementById('badgeName').textContent = name;
@@ -1536,7 +1600,7 @@
             });
 
             renderDirectoryTable();
-            alert(`Worker ${name} successfully saved!`);
+            alert(`Worker ${name} successfully saved to Cloud!`);
         }
 
         function printSingleBadgeFromPreview() {
@@ -1705,9 +1769,9 @@
                     }
                 }
 
-                saveToLocalStorage();
+                saveToCloud();
                 renderDirectoryTable();
-                alert(`Successfully imported ${count} workers to directory!`);
+                alert(`Successfully imported ${count} workers to Cloud directory!`);
             };
             reader.readAsText(file);
         }
@@ -1722,7 +1786,7 @@
                 const todayStr = getTodayDateString();
                 attendanceLogs = attendanceLogs.filter(l => l.date !== todayStr);
                 selectedDailyLogs.clear();
-                saveToLocalStorage();
+                saveToCloud();
                 renderDailyTable();
             }
         }
@@ -1732,11 +1796,11 @@
                 alert("Restricted: Only Admin users can clear historical logs.");
                 return;
             }
-            if (confirm("⚠️ CRITICAL WARNING: Delete ALL historical attendance logs permanently?")) {
+            if (confirm("⚠️ CRITICAL WARNING: Delete ALL historical attendance logs permanently from Cloud?")) {
                 attendanceLogs = [];
                 selectedDailyLogs.clear();
                 selectedHistoryLogs.clear();
-                saveToLocalStorage();
+                saveToCloud();
                 renderDailyTable();
                 renderHistoryTable();
             }
@@ -1876,7 +1940,7 @@
 
             if (confirm(`⚠️ Are you sure you want to permanently delete user account "${displayName}" (${username})?`)) {
                 registeredUsers = registeredUsers.filter(u => u.username.toLowerCase() !== username.toLowerCase());
-                saveToLocalStorage();
+                saveToCloud();
                 renderRegisteredUsersList();
                 alert(`User account "${displayName}" deleted successfully.`);
             }
@@ -1895,7 +1959,7 @@
 
             if (found) {
                 currentUser = { username: found.username, name: found.name, role: found.role };
-                saveToLocalStorage();
+                saveToCloud();
                 updateUserUI();
                 closeLoginModal();
                 alert(`Logged in successfully as ${found.name} (${found.role})`);
@@ -1932,14 +1996,14 @@
             }
 
             registeredUsers.push({ username: u, password: p, name, role });
-            saveToLocalStorage();
+            saveToCloud();
             switchAuthMode('manage');
             alert(`User account for ${name} (${role}) created successfully!`);
         }
 
         function handleLogout() {
             currentUser = null;
-            saveToLocalStorage();
+            saveToCloud();
             updateUserUI();
             alert("Logged out successfully.");
         }
