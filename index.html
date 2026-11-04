@@ -1048,20 +1048,35 @@
         }
 
         async function executeConfirmedClear() {
-            const passwordInput = document.getElementById('clearAuthPassword').value;
-            if (passwordInput !== ADMIN_CLEAR_PASSWORD) {
-                alert("Incorrect clearance password! Action denied.");
-                return;
-            }
+    const passwordInput = document.getElementById('clearAuthPassword').value;
 
-            closeClearAuthModal();
+    if (passwordInput !== ADMIN_CLEAR_PASSWORD) {
+        alert("Incorrect clearance password! Action denied.");
+        return;
+    }
 
-            if (pendingClearAction === 'today') {
-                await clearTodayRecordsConfirmed();
-            } else if (pendingClearAction === 'all') {
-                await clearAllRecordsConfirmed();
-            }
+    // Store the action BEFORE closing the modal
+    const action = pendingClearAction;
+
+    if (!action) {
+        alert("No clear operation selected. Please try again.");
+        return;
+    }
+
+    closeClearAuthModal();
+
+    try {
+        if (action === 'today') {
+            await clearTodayRecordsConfirmed();
+        } 
+        else if (action === 'all') {
+            await clearAllRecordsConfirmed();
         }
+    } catch (error) {
+        console.error("Clear logs error:", error);
+        alert("Unable to clear attendance logs: " + error.message);
+    }
+}
 
         async function clearTodayRecordsConfirmed() {
             if (!currentUser) return;
