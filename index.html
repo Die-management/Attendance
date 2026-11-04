@@ -67,12 +67,26 @@
                     <span id="syncStatusText">Connecting...</span>
                 </span>
             </div>
-         
 
-            <div class="flex items-center gap-3">
-                <div class="text-xs sm:text-sm bg-blue-800 px-3 py-1 rounded-md font-mono" id="liveClock">--:--:--</div>
-                <div class="text-[11px] bg-blue-900/60 text-blue-100 px-2.5 py-1 rounded font-mono hidden md:block" id="userBadge">
-                    User: <span id="userIdDisplay" class="font-bold">Authenticating...</span>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <div class="text-xs sm:text-sm bg-blue-800 px-3 py-1 rounded-md font-mono hidden sm:block" id="liveClock">--:--:--</div>
+                
+                <!-- Auth User Profile Badge & Login Button -->
+                <div id="authHeaderWidget" class="flex items-center gap-2">
+                    <div id="userInfoDisplay" class="hidden text-xs bg-blue-900/80 border border-blue-500 text-blue-100 px-2.5 py-1 rounded-md font-mono flex items-center gap-2">
+                        <span>👤 <strong id="userRoleBadge" class="text-amber-300">Admin</strong></span>
+                        <span class="text-blue-300">|</span>
+                        <span id="userNameDisplay" class="max-w-[100px] truncate">Admin User</span>
+                    </div>
+                    <button id="createUserHeaderBtn" onclick="openCreateUserModal()" class="hidden bg-emerald-500 hover:bg-emerald-600 text-blue-950 font-bold text-xs px-3 py-1.5 rounded-md transition shadow-sm flex items-center gap-1">
+                        ➕ <span>Create User</span>
+                    </button>
+                    <button id="loginHeaderBtn" onclick="openLoginModal()" class="bg-amber-500 hover:bg-amber-600 text-blue-950 font-bold text-xs px-3 py-1.5 rounded-md transition shadow-sm flex items-center gap-1">
+                        🔑 <span>Log In</span>
+                    </button>
+                    <button id="logoutHeaderBtn" onclick="handleLogout()" class="hidden bg-red-600 hover:bg-red-700 text-white font-medium text-xs px-2.5 py-1.5 rounded-md transition">
+                        🚪 Logout
+                    </button>
                 </div>
             </div>
         </div>
@@ -92,6 +106,125 @@
             </div>
         </div>
     </header>
+
+    <!-- Modal 1: User Login & Create Account Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl p-5 sm:p-6 max-w-md w-full shadow-2xl border border-gray-100 relative">
+            <button onclick="closeLoginModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            
+            <!-- Auth Nav Tabs -->
+            <div class="flex border-b border-gray-200 mb-5">
+                <button id="authTabLogin" onclick="switchAuthMode('login')" class="flex-1 py-2.5 text-center font-bold text-sm text-blue-600 border-b-2 border-blue-600">
+                    🔐 Sign In
+                </button>
+                <button id="authTabRegister" onclick="switchAuthMode('register')" class="hidden flex-1 py-2.5 text-center font-semibold text-sm text-gray-500 border-b-2 border-transparent hover:text-gray-700">
+                    ➕ Create User
+                </button>
+            </div>
+
+            <!-- LOGIN FORM -->
+            <div id="authLoginForm" class="space-y-4">
+                <h3 class="text-base font-bold text-gray-800">Log In to System Account</h3>
+                <div id="loginErrorMsg" class="hidden p-2.5 rounded bg-red-50 text-red-700 border border-red-200 text-xs font-medium"></div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Username / User ID</label>
+                    <input type="text" id="loginUsername" placeholder="e.g. admin or supervisor" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+
+                <!-- Quick Presets -->
+                <div class="bg-blue-50 p-3 rounded-lg border border-blue-100 text-xs text-blue-900 space-y-1">
+                    <p class="font-bold">⚡ Quick Presets (Demo):</p>
+                    <div class="flex gap-2 pt-1">
+                        <button onclick="fillPresetCredentials('admin', 'admin123')" class="bg-white hover:bg-blue-100 text-blue-700 border border-blue-300 px-2.5 py-1 rounded text-[11px] font-mono">
+                            Admin (admin123)
+                        </button>
+                        <button onclick="fillPresetCredentials('supervisor', 'super123')" class="bg-white hover:bg-blue-100 text-blue-700 border border-blue-300 px-2.5 py-1 rounded text-[11px] font-mono">
+                            Supervisor (super123)
+                        </button>
+                    </div>
+                </div>
+
+                <button onclick="handleUserLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition text-sm">
+                    Log In
+                </button>
+            </div>
+
+            <!-- REGISTER FORM -->
+            <div id="authRegisterForm" class="space-y-4 hidden">
+                <h3 class="text-base font-bold text-gray-800">Register New User Account</h3>
+                <div id="regAdminWarning" class="p-2.5 rounded bg-amber-50 text-amber-800 border border-amber-200 text-xs font-medium flex items-center gap-1.5">
+                    <span>🛡️</span> <span>Restricted: <strong>Only Admin</strong> users can create new user accounts.</span>
+                </div>
+                <div id="regErrorMsg" class="hidden p-2.5 rounded bg-red-50 text-red-700 border border-red-200 text-xs font-medium"></div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Full Display Name</label>
+                    <input type="text" id="regDisplayName" placeholder="e.g. John Doe" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Choose Username</label>
+                    <input type="text" id="regUsername" placeholder="e.g. jdoe" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Set Password</label>
+                    <input type="password" id="regPassword" placeholder="••••••••" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">User Role & Privileges</label>
+                    <select id="regUserRole" class="w-full border rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="Supervisor">Supervisor (Log Punch, Edit Out Time)</option>
+                        <option value="Admin">Admin (Full Access & Clear Logs)</option>
+                    </select>
+                </div>
+
+                <button onclick="handleUserRegistration()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg transition text-sm">
+                    Create Account
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: Modify Out Time Modal -->
+    <div id="modifyOutTimeModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl border border-gray-100 relative">
+            <button onclick="closeModifyOutTimeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            
+            <h3 class="text-base font-bold text-gray-800 mb-1 flex items-center gap-2">
+                <span>🕒</span> Modify Out Time
+            </h3>
+            <p class="text-xs text-gray-500 mb-4">Set or update employee checkout time. Overtime will automatically recalculate.</p>
+
+            <div class="bg-slate-50 p-3 rounded-lg border border-gray-200 mb-4 space-y-1 text-xs">
+                <div><span class="text-gray-500">Worker:</span> <strong id="modOutWorkerName" class="text-gray-800">--</strong></div>
+                <div><span class="text-gray-500">In Time:</span> <span id="modOutInTime" class="font-mono font-bold text-emerald-700">--:--</span></div>
+                <div><span class="text-gray-500">Current Out Time:</span> <span id="modOutCurrentTime" class="font-mono font-bold text-purple-700">--:--</span></div>
+            </div>
+
+            <div class="space-y-3 mb-5">
+                <label class="block text-xs font-semibold text-gray-700">Select New Out Time (HH:MM)</label>
+                <div class="flex items-center gap-2">
+                    <input type="time" id="newOutTimeInput" step="1" class="w-full border-2 border-blue-400 rounded-lg p-2.5 text-base font-mono focus:ring-2 focus:ring-blue-600 outline-none">
+                    <button onclick="setCurrentOutTimeInModal()" class="bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs font-bold px-3 py-2.5 rounded-lg transition whitespace-nowrap">
+                        Now
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="clearOutTimeInModal()" class="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 font-semibold py-2 rounded-lg text-xs transition">
+                    Clear Out Time
+                </button>
+                <button onclick="saveModifiedOutTime()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs transition">
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
 
     <main class="max-w-7xl mx-auto p-3 sm:p-6 no-print">
 
@@ -249,6 +382,7 @@
                                     <th class="py-3 px-4">Out Time</th>
                                     <th class="py-3 px-4">Total Hrs</th>
                                     <th class="py-3 px-4">OT (Hrs)</th>
+                                    <th class="py-3 px-4">Logged By</th>
                                     <th class="py-3 px-4">Status</th>
                                     <th class="py-3 px-4 text-right no-print">Action</th>
                                 </tr>
@@ -327,6 +461,7 @@
                                 <th class="py-3 px-4">Out Time</th>
                                 <th class="py-3 px-4">Total Hrs</th>
                                 <th class="py-3 px-4">OT (Hrs)</th>
+                                <th class="py-3 px-4">Logged By</th>
                                 <th class="py-3 px-4">Status</th>
                                 <th class="py-3 px-4 text-right">Action</th>
                             </tr>
@@ -492,6 +627,8 @@
         let html5QrcodeScanner = null;
         let activeBadgeWorker = null;
         let currentUser = null;
+        let loggedInAppUser = null; // System User Profile
+        let activeModifyingLogIndex = null;
         let workersUnsub = null;
         let logsUnsub = null;
         let workersSnapshotReady = false;
@@ -501,6 +638,32 @@
 
         const SCAN_COOLDOWN_MS = 5 * 60 * 1000;
         const ADMIN_CLEAR_PASSWORD = "admin123"; // Password for clearing logs
+
+        // User Accounts Database
+        const APP_USERS = {
+            'admin': { password: 'admin123', role: 'Admin', displayName: 'Administrator' },
+            'supervisor': { password: 'super123', role: 'Supervisor', displayName: 'Shift Supervisor' }
+        };
+
+        function getSavedCustomUsers() {
+            try {
+                const saved = localStorage.getItem('attendance_app_custom_users');
+                return saved ? JSON.parse(saved) : {};
+            } catch (e) {
+                return {};
+            }
+        }
+
+        function getActiveUserTag() {
+            if (loggedInAppUser) {
+                return `${loggedInAppUser.displayName || loggedInAppUser.username} (${loggedInAppUser.role})`;
+            }
+            return 'System / Auto Scanner';
+        }
+
+        function getAllUsers() {
+            return { ...APP_USERS, ...getSavedCustomUsers() };
+        }
 
         function getLocalDateString(date = new Date()) {
             const year = date.getFullYear();
@@ -534,12 +697,10 @@
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
-                document.getElementById('userIdDisplay').innerText = user.uid.substring(0, 8) + '...';
                 updateSyncStatus('Syncing data...', 'amber');
                 setupFirestoreListeners();
             } else {
                 currentUser = null;
-                document.getElementById('userIdDisplay').innerText = 'Offline';
                 updateSyncStatus('Disconnected', 'red');
             }
         });
@@ -621,7 +782,270 @@
             }
         }
 
+        // --- AUTH & USER MODAL FUNCTIONS ---
+        function openLoginModal() {
+            const errLog = document.getElementById('loginErrorMsg');
+            const errReg = document.getElementById('regErrorMsg');
+            if (errLog) errLog.classList.add('hidden');
+            if (errReg) errReg.classList.add('hidden');
+            switchAuthMode('login');
+            document.getElementById('loginModal').classList.remove('hidden');
+        }
+
+        function openCreateUserModal() {
+            if (!loggedInAppUser || loggedInAppUser.role !== 'Admin') {
+                showAlert("Access Denied: Only Admin users can create accounts.", "bg-red-100 border-red-400 text-red-800");
+                return;
+            }
+            const errLog = document.getElementById('loginErrorMsg');
+            const errReg = document.getElementById('regErrorMsg');
+            if (errLog) errLog.classList.add('hidden');
+            if (errReg) errReg.classList.add('hidden');
+            switchAuthMode('register');
+            document.getElementById('loginModal').classList.remove('hidden');
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.add('hidden');
+        }
+
+        function fillPresetCredentials(user, pass) {
+            document.getElementById('loginUsername').value = user;
+            document.getElementById('loginPassword').value = pass;
+        }
+
+        function switchAuthMode(mode) {
+            const loginForm = document.getElementById('authLoginForm');
+            const regForm = document.getElementById('authRegisterForm');
+            const tabLogin = document.getElementById('authTabLogin');
+            const tabReg = document.getElementById('authTabRegister');
+
+            if (mode === 'login') {
+                loginForm.classList.remove('hidden');
+                regForm.classList.add('hidden');
+                tabLogin.className = "flex-1 py-2.5 text-center font-bold text-sm text-blue-600 border-b-2 border-blue-600";
+                tabReg.className = "flex-1 py-2.5 text-center font-semibold text-sm text-gray-500 border-b-2 border-transparent hover:text-gray-700";
+            } else {
+                loginForm.classList.add('hidden');
+                regForm.classList.remove('hidden');
+                tabReg.className = "flex-1 py-2.5 text-center font-bold text-sm text-blue-600 border-b-2 border-blue-600";
+                tabLogin.className = "flex-1 py-2.5 text-center font-semibold text-sm text-gray-500 border-b-2 border-transparent hover:text-gray-700";
+            }
+        }
+
+        function handleUserLogin() {
+            const userIn = document.getElementById('loginUsername').value.trim().toLowerCase();
+            const passIn = document.getElementById('loginPassword').value;
+            const errBox = document.getElementById('loginErrorMsg');
+
+            if (!userIn || !passIn) {
+                errBox.innerText = "Please enter both username and password.";
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            const allUsers = getAllUsers();
+            const account = allUsers[userIn];
+
+            if (account && account.password === passIn) {
+                loggedInAppUser = {
+                    username: userIn,
+                    role: account.role,
+                    displayName: account.displayName
+                };
+
+                try {
+                    sessionStorage.setItem('attendance_logged_user', JSON.stringify(loggedInAppUser));
+                } catch(e) {}
+
+                updateAuthHeaderUI();
+                closeLoginModal();
+                showAlert(`👋 Welcome ${account.displayName}! Logged in as ${account.role}.`, "bg-emerald-100 border-emerald-400 text-emerald-800");
+                renderDailyTable();
+                renderHistoryTable();
+            } else {
+                errBox.innerText = "Invalid username or password!";
+                errBox.classList.remove('hidden');
+            }
+        }
+
+        function handleUserRegistration() {
+            const name = document.getElementById('regDisplayName').value.trim();
+            const user = document.getElementById('regUsername').value.trim().toLowerCase();
+            const pass = document.getElementById('regPassword').value;
+            const role = document.getElementById('regUserRole').value;
+            const errBox = document.getElementById('regErrorMsg');
+
+            // --- ADMIN RESTRICTION CHECK ---
+            if (!loggedInAppUser || loggedInAppUser.role !== 'Admin') {
+                errBox.innerText = "Access Denied: Only logged-in Admin accounts are authorized to create new user accounts. Please log in as Admin first.";
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            if (!name || !user || !pass) {
+                errBox.innerText = "Please complete all fields to register.";
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            const allUsers = getAllUsers();
+            if (allUsers[user]) {
+                errBox.innerText = "Username already exists! Please choose a different username.";
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            const customUsers = getSavedCustomUsers();
+            customUsers[user] = { password: pass, role: role, displayName: name };
+
+            try {
+                localStorage.setItem('attendance_app_custom_users', JSON.stringify(customUsers));
+            } catch(e) {
+                console.error("Local storage error:", e);
+            }
+
+            closeLoginModal();
+            showAlert(`🎉 New account (${name} - ${role}) created successfully by ${loggedInAppUser.displayName}!`, "bg-emerald-100 border-emerald-400 text-emerald-800");
+            renderDailyTable();
+            renderHistoryTable();
+        }
+
+        function updateAuthHeaderUI() {
+            const userInfo = document.getElementById('userInfoDisplay');
+            const loginBtn = document.getElementById('loginHeaderBtn');
+            const createUserBtn = document.getElementById('createUserHeaderBtn');
+            const logoutBtn = document.getElementById('logoutHeaderBtn');
+            const roleBadge = document.getElementById('userRoleBadge');
+            const nameDisplay = document.getElementById('userNameDisplay');
+            const authTabReg = document.getElementById('authTabRegister');
+
+            if (loggedInAppUser) {
+                if (userInfo) userInfo.classList.remove('hidden');
+                if (loginBtn) loginBtn.classList.add('hidden');
+                if (logoutBtn) logoutBtn.classList.remove('hidden');
+                if (roleBadge) roleBadge.innerText = loggedInAppUser.role;
+                if (nameDisplay) nameDisplay.innerText = loggedInAppUser.displayName || loggedInAppUser.username;
+
+                // Show Create User button only for Admins
+                if (loggedInAppUser.role === 'Admin') {
+                    if (createUserBtn) createUserBtn.classList.remove('hidden');
+                    if (authTabReg) authTabReg.classList.remove('hidden');
+                } else {
+                    if (createUserBtn) createUserBtn.classList.add('hidden');
+                    if (authTabReg) authTabReg.classList.add('hidden');
+                }
+            } else {
+                if (userInfo) userInfo.classList.add('hidden');
+                if (loginBtn) loginBtn.classList.remove('hidden');
+                if (logoutBtn) logoutBtn.classList.add('hidden');
+                if (createUserBtn) createUserBtn.classList.add('hidden');
+                if (authTabReg) authTabReg.classList.add('hidden');
+            }
+        }
+
+        function handleLogout() {
+            loggedInAppUser = null;
+            try {
+                sessionStorage.removeItem('attendance_logged_user');
+            } catch(e) {}
+            updateAuthHeaderUI();
+            showAlert("Logged out successfully.", "bg-gray-100 border-gray-400 text-gray-800");
+            renderDailyTable();
+            renderHistoryTable();
+        }
+
+        // --- MODIFY OUT TIME MODAL FUNCTIONS ---
+        function openModifyOutTimeModal(globalIndex) {
+            const record = attendanceLogs[globalIndex];
+            if (!record) return;
+
+            activeModifyingLogIndex = globalIndex;
+
+            document.getElementById('modOutWorkerName').innerText = `${record.name} (${record.id})`;
+            document.getElementById('modOutInTime').innerText = record.inTime || '--:--';
+            document.getElementById('modOutCurrentTime').innerText = record.outTime || 'None (Punched IN)';
+
+            const timeInput = document.getElementById('newOutTimeInput');
+            if (record.outTime) {
+                // Ensure HH:MM format for HTML time picker
+                const parts = record.outTime.split(':');
+                timeInput.value = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+            } else {
+                const now = new Date();
+                timeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            }
+
+            document.getElementById('modifyOutTimeModal').classList.remove('hidden');
+        }
+
+        function closeModifyOutTimeModal() {
+            document.getElementById('modifyOutTimeModal').classList.add('hidden');
+            activeModifyingLogIndex = null;
+        }
+
+        function setCurrentOutTimeInModal() {
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            document.getElementById('newOutTimeInput').value = timeStr.substring(0, 5);
+        }
+
+        function clearOutTimeInModal() {
+            document.getElementById('newOutTimeInput').value = '';
+        }
+
+        async function saveModifiedOutTime() {
+            if (activeModifyingLogIndex === null || !currentUser) return;
+
+            const record = attendanceLogs[activeModifyingLogIndex];
+            if (!record) return;
+
+            const val = document.getElementById('newOutTimeInput').value.trim();
+            const userTag = getActiveUserTag();
+
+            if (!val) {
+                record.outTime = null;
+                record.status = 'IN';
+                record.totalHours = '0.00';
+                record.otHours = '0.00';
+                record.modifiedBy = userTag;
+            } else {
+                let outTimeFormatted = val;
+                if (val.split(':').length === 2) {
+                    outTimeFormatted = `${val}:00`;
+                }
+
+                record.outTime = outTimeFormatted;
+                record.status = 'COMPLETED';
+                record.modifiedBy = userTag;
+                calculateOvertime(record);
+            }
+
+            const docKey = record.docId || `${record.date}_${record.id}`;
+
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docKey), record);
+                closeModifyOutTimeModal();
+                showAlert(`🕒 Out Time updated by ${userTag} for ${record.name}`, "bg-purple-100 border-purple-400 text-purple-800");
+            } catch (err) {
+                showAlert("Failed to update Out Time: " + err.message, "bg-red-100 border-red-400 text-red-800");
+            }
+        }
+
         // Global Exposure
+        window.openLoginModal = openLoginModal;
+        window.openCreateUserModal = openCreateUserModal;
+        window.closeLoginModal = closeLoginModal;
+        window.handleUserLogin = handleUserLogin;
+        window.handleLogout = handleLogout;
+        window.fillPresetCredentials = fillPresetCredentials;
+        window.openModifyOutTimeModal = openModifyOutTimeModal;
+        window.closeModifyOutTimeModal = closeModifyOutTimeModal;
+        window.setCurrentOutTimeInModal = setCurrentOutTimeInModal;
+        window.clearOutTimeInModal = clearOutTimeInModal;
+        window.saveModifiedOutTime = saveModifiedOutTime;
+        window.switchAuthMode = switchAuthMode;
+        window.handleUserRegistration = handleUserRegistration;
         window.switchTab = switchTab;
         window.toggleContractorInput = toggleContractorInput;
         window.registerWorker = registerWorker;
@@ -647,6 +1071,15 @@
         window.executeConfirmedClear = executeConfirmedClear;
 
         document.addEventListener("DOMContentLoaded", () => {
+            // Restore session user if present
+            try {
+                const savedUser = sessionStorage.getItem('attendance_logged_user');
+                if (savedUser) {
+                    loggedInAppUser = JSON.parse(savedUser);
+                }
+            } catch(e) {}
+            updateAuthHeaderUI();
+
             document.getElementById('currentDateDisplay').innerText = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
             updateClock();
             setInterval(updateClock, 1000);
@@ -905,6 +1338,7 @@
             
             let type = worker ? (worker.type || 'Regular') : 'Regular';
             let agency = worker ? (worker.agency || '-') : '-';
+            const userTag = getActiveUserTag();
 
             let record = attendanceLogs.find(r => r.id === scannedId && r.date === todayStr && !r.outTime);
 
@@ -933,12 +1367,13 @@
                     otHours: '0.00',
                     status: 'IN',
                     manualOT: false,
+                    createdBy: userTag,
                     scanTimestamp: nowTime
                 };
 
                 try {
                     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docKey), newRecord);
-                    showAlert(`✅ IN PUNCH: ${name} checked in at ${timeStr}`, 'bg-blue-100 border-blue-400 text-blue-800');
+                    showAlert(`✅ IN PUNCH: ${name} checked in at ${timeStr} by ${userTag}`, 'bg-blue-100 border-blue-400 text-blue-800');
                 } catch (err) {
                     showAlert("Check-in error: " + err.message, "bg-red-100 border-red-400 text-red-800");
                 }
@@ -949,13 +1384,14 @@
                 const updatedRecord = { ...record };
                 updatedRecord.outTime = timeStr;
                 updatedRecord.status = 'COMPLETED';
+                updatedRecord.completedBy = userTag;
                 updatedRecord.scanTimestamp = nowTime;
 
                 calculateOvertime(updatedRecord);
 
                 try {
                     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docKey), updatedRecord);
-                    showAlert(`🔴 OUT PUNCH: ${name} checked out at ${timeStr}. OT: ${updatedRecord.otHours} hrs`, 'bg-purple-100 border-purple-400 text-purple-800');
+                    showAlert(`🔴 OUT PUNCH: ${name} checked out at ${timeStr} by ${userTag}`, 'bg-purple-100 border-purple-400 text-purple-800');
                 } catch (err) {
                     showAlert("Check-out error: " + err.message, "bg-red-100 border-red-400 text-red-800");
                 }
@@ -963,15 +1399,15 @@
         }
 
         function calculateOvertime(record) {
-            if (record.manualOT) return;
+            if (record.manualOT || !record.outTime) return;
 
             const shiftHrs = parseFloat(document.getElementById('shiftHours').value) || 8;
 
             const [inH, inM, inS] = record.inTime.split(':').map(Number);
             const [outH, outM, outS] = record.outTime.split(':').map(Number);
 
-            let inDate = new Date(2000, 0, 1, inH, inM, inS);
-            let outDate = new Date(2000, 0, 1, outH, outM, outS);
+            let inDate = new Date(2000, 0, 1, inH, inM, inS || 0);
+            let outDate = new Date(2000, 0, 1, outH, outM, outS || 0);
 
             if (outDate < inDate) {
                 outDate.setDate(outDate.getDate() + 1);
@@ -1015,11 +1451,12 @@
                 if (!isNaN(parsedOT) && parsedOT >= 0) {
                     record.otHours = parsedOT.toFixed(2);
                     record.manualOT = true;
+                    record.modifiedBy = getActiveUserTag();
                     
                     const docKey = record.docId || `${record.date}_${record.id}`;
                     try {
                         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docKey), record);
-                        showAlert(`✏️ Manual OT set to ${record.otHours} hrs for ${record.name} on Cloud`, 'bg-blue-100 border-blue-400 text-blue-800');
+                        showAlert(`✏️ Manual OT set to ${record.otHours} hrs for ${record.name} on Cloud by ${record.modifiedBy}`, 'bg-blue-100 border-blue-400 text-blue-800');
                     } catch (err) {
                         showAlert("Failed to update OT: " + err.message, "bg-red-100 border-red-400 text-red-800");
                     }
@@ -1154,13 +1591,14 @@
 
             if (todayLogs.length === 0) {
                 const emptyMsg = `<div class="py-6 text-center text-gray-400 text-xs">No records logged for today matching filter. Scan barcode to check in.</div>`;
-                tbody.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-gray-400">No records logged for today matching filter. Scan barcode to check in.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" class="py-6 text-center text-gray-400">No records logged for today matching filter. Scan barcode to check in.</td></tr>`;
                 mobileList.innerHTML = emptyMsg;
             } else {
                 todayLogs.forEach((r) => {
                     let globalIndex = attendanceLogs.indexOf(r);
                     let docKey = r.docId || `${r.date}_${r.id}`;
                     let safeName = r.name.replace(/'/g, "\\'");
+                    let loggedByUser = r.modifiedBy || r.completedBy || r.createdBy || 'System Auto Scan';
 
                     let typeBadge = r.type === 'Contractor'
                         ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold text-[10px]">Contractor (${r.agency || 'Independent'})</span>`
@@ -1180,11 +1618,18 @@
                             <td class="py-3 px-4 font-sans text-gray-900">${r.name}</td>
                             <td class="py-3 px-4">${typeBadge}</td>
                             <td class="py-3 px-4 text-emerald-700">${r.inTime}</td>
-                            <td class="py-3 px-4 text-purple-700">${r.outTime || '--:--'}</td>
+                            <td class="py-3 px-4 text-purple-700">
+                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="hover:underline flex items-center gap-1 font-bold">
+                                    <span>${r.outTime || '--:--'}</span>
+                                    <span class="text-[10px] text-gray-400">✏️</span>
+                                </button>
+                            </td>
                             <td class="py-3 px-4 font-bold">${r.totalHours || '0.00'}</td>
                             <td class="py-3 px-4 font-bold">${otDisplay}</td>
+                            <td class="py-3 px-4 text-gray-600 font-sans text-[11px] truncate max-w-[120px]" title="${loggedByUser}">👤 ${loggedByUser}</td>
                             <td class="py-3 px-4">${statusBadge}</td>
                             <td class="py-3 px-4 text-right no-print flex justify-end gap-1.5 items-center">
+                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="text-purple-700 hover:text-purple-900 text-[11px] font-semibold bg-purple-50 px-2 py-1 rounded border border-purple-200">🕒 Out</button>
                                 <button onclick="editManualOT(${globalIndex})" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold underline bg-blue-50 px-2 py-1 rounded border border-blue-200">✏️ OT</button>
                                 <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="text-red-600 hover:text-red-800 text-[11px] font-semibold bg-red-50 px-2 py-1 rounded border border-red-200">🗑️ Delete</button>
                             </td>
@@ -1203,13 +1648,22 @@
                             </div>
                             <div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-200 font-mono">
                                 <div><span class="text-gray-500 block text-[10px]">IN TIME</span><span class="text-emerald-700 font-bold">${r.inTime}</span></div>
-                                <div><span class="text-gray-500 block text-[10px]">OUT TIME</span><span class="text-purple-700 font-bold">${r.outTime || '--:--'}</span></div>
+                                <div>
+                                    <span class="text-gray-500 block text-[10px]">OUT TIME</span>
+                                    <button onclick="openModifyOutTimeModal(${globalIndex})" class="text-purple-700 font-bold underline flex items-center gap-1">
+                                        <span>${r.outTime || '--:--'}</span> ✏️
+                                    </button>
+                                </div>
                                 <div><span class="text-gray-500 block text-[10px]">TOTAL WORK</span><span class="font-bold">${r.totalHours || '0.00'} hrs</span></div>
                                 <div><span class="text-gray-500 block text-[10px]">OVERTIME</span><span class="font-bold">${otDisplay} hrs</span></div>
                             </div>
+                            <div class="text-[11px] text-gray-500 flex items-center gap-1">
+                                <span>👤 Logged / Updated By:</span> <strong class="text-gray-700">${loggedByUser}</strong>
+                            </div>
                             <div class="flex gap-2 pt-1 no-print">
-                                <button onclick="editManualOT(${globalIndex})" class="flex-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 py-1.5 rounded text-xs font-semibold">✏️ Edit Manual OT</button>
-                                <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded text-xs font-semibold">🗑️ Delete</button>
+                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="flex-1 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 py-1.5 rounded text-xs font-semibold">🕒 Modify Out Time</button>
+                                <button onclick="editManualOT(${globalIndex})" class="flex-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 py-1.5 rounded text-xs font-semibold">✏️ OT</button>
+                                <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded text-xs font-semibold">🗑️</button>
                             </div>
                         </div>
                     `;
@@ -1253,13 +1707,14 @@
 
             if (filteredLogs.length === 0) {
                 const emptyMsg = `<div class="py-6 text-center text-gray-400 text-xs">No historical records found matching filter.</div>`;
-                tbody.innerHTML = `<tr><td colspan="10" class="py-6 text-center text-gray-400">No historical records found matching filter.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="11" class="py-6 text-center text-gray-400">No historical records found matching filter.</td></tr>`;
                 mobileList.innerHTML = emptyMsg;
             } else {
                 [...filteredLogs].reverse().forEach((r) => {
                     let globalIndex = attendanceLogs.indexOf(r);
                     let docKey = r.docId || `${r.date}_${r.id}`;
                     let safeName = r.name.replace(/'/g, "\\'");
+                    let loggedByUser = r.modifiedBy || r.completedBy || r.createdBy || 'System Auto Scan';
 
                     let typeBadge = r.type === 'Contractor'
                         ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold text-[10px]">Contractor (${r.agency || 'Independent'})</span>`
@@ -1280,11 +1735,18 @@
                             <td class="py-3 px-4 font-sans text-gray-900">${r.name}</td>
                             <td class="py-3 px-4">${typeBadge}</td>
                             <td class="py-3 px-4 text-emerald-700">${r.inTime}</td>
-                            <td class="py-3 px-4 text-purple-700">${r.outTime || '--:--'}</td>
+                            <td class="py-3 px-4 text-purple-700 font-bold">
+                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="hover:underline flex items-center gap-1 font-bold">
+                                    <span>${r.outTime || '--:--'}</span>
+                                    <span class="text-[10px] text-gray-400">✏️</span>
+                                </button>
+                            </td>
                             <td class="py-3 px-4 font-bold">${r.totalHours || '0.00'}</td>
                             <td class="py-3 px-4 font-bold">${otDisplay}</td>
+                            <td class="py-3 px-4 text-gray-600 font-sans text-[11px] truncate max-w-[120px]" title="${loggedByUser}">👤 ${loggedByUser}</td>
                             <td class="py-3 px-4">${statusBadge}</td>
                             <td class="py-3 px-4 text-right flex justify-end gap-1.5 items-center">
+                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="text-purple-700 hover:text-purple-900 text-[11px] font-semibold bg-purple-50 px-2 py-1 rounded border border-purple-200">🕒 Out</button>
                                 <button onclick="editManualOT(${globalIndex})" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold underline bg-blue-50 px-2 py-1 rounded border border-blue-200">✏️ OT</button>
                                 <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="text-red-600 hover:text-red-800 text-[11px] font-semibold bg-red-50 px-2 py-1 rounded border border-red-200">🗑️ Delete</button>
                             </td>
@@ -1304,13 +1766,22 @@
                             </div>
                             <div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-200 font-mono">
                                 <div><span class="text-gray-500 block text-[10px]">IN TIME</span><span class="text-emerald-700 font-bold">${r.inTime}</span></div>
-                                <div><span class="text-gray-500 block text-[10px]">OUT TIME</span><span class="text-purple-700 font-bold">${r.outTime || '--:--'}</span></div>
+                                <div>
+                                    <span class="text-gray-500 block text-[10px]">OUT TIME</span>
+                                    <button onclick="openModifyOutTimeModal(${globalIndex})" class="text-purple-700 font-bold underline flex items-center gap-1">
+                                        <span>${r.outTime || '--:--'}</span> ✏️
+                                    </button>
+                                </div>
                                 <div><span class="text-gray-500 block text-[10px]">TOTAL WORK</span><span class="font-bold">${r.totalHours || '0.00'} hrs</span></div>
                                 <div><span class="text-gray-500 block text-[10px]">OVERTIME</span><span class="font-bold">${otDisplay} hrs</span></div>
                             </div>
+                            <div class="text-[11px] text-gray-500 flex items-center gap-1">
+                                <span>👤 Logged / Updated By:</span> <strong class="text-gray-700">${loggedByUser}</strong>
+                            </div>
                             <div class="flex gap-2 pt-1">
-                                <button onclick="editManualOT(${globalIndex})" class="flex-1 bg-blue-50 text-blue-700 border border-blue-200 py-1.5 rounded text-xs font-semibold">✏️ Edit Manual OT</button>
-                                <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded text-xs font-semibold">🗑️ Delete</button>
+                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="flex-1 bg-purple-50 text-purple-700 border border-purple-200 py-1.5 rounded text-xs font-semibold">🕒 Modify Out Time</button>
+                                <button onclick="editManualOT(${globalIndex})" class="flex-1 bg-blue-50 text-blue-700 border border-blue-200 py-1.5 rounded text-xs font-semibold">✏️ OT</button>
+                                <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded text-xs font-semibold">🗑️</button>
                             </div>
                         </div>
                     `;
@@ -1475,9 +1946,10 @@
                 return;
             }
 
-            let csv = "Date,Worker ID,Name,Type,Agency,In Time,Out Time,Total Hours,Overtime Hours,Manual OT Override,Status\n";
+            let csv = "Date,Worker ID,Name,Type,Agency,In Time,Out Time,Total Hours,Overtime Hours,Logged By / Modified By,Manual OT Override,Status\n";
             logsToExport.forEach(r => {
-                csv += `"${r.date}","${r.id}","${r.name}","${r.type || 'Regular'}","${r.agency || '-'}","${r.inTime}","${r.outTime || ''}","${r.totalHours}","${r.otHours}","${r.manualOT ? 'YES' : 'NO'}","${r.status}"\n`;
+                const loggedByUser = r.modifiedBy || r.completedBy || r.createdBy || 'System Auto Scan';
+                csv += `"${r.date}","${r.id}","${r.name}","${r.type || 'Regular'}","${r.agency || '-'}","${r.inTime}","${r.outTime || ''}","${r.totalHours}","${r.otHours}","${loggedByUser}","${r.manualOT ? 'YES' : 'NO'}","${r.status}"\n`;
             });
 
             const link = document.createElement("a");
