@@ -58,7 +58,7 @@
     <!-- Header -->
     <header class="bg-blue-700 text-white shadow-md sticky top-0 z-30 no-print">
         <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
                 <h1 class="text-lg sm:text-2xl font-bold tracking-wide flex items-center gap-2">
                     <span>👷</span> Worker Attendance & OT
                 </h1>
@@ -67,9 +67,6 @@
                     <span id="syncStatusText">Connecting...</span>
                 </span>
             </div>
-            
-            
-
             <div class="flex items-center gap-3">
                 <div class="text-xs sm:text-sm bg-blue-800 px-3 py-1 rounded-md font-mono" id="liveClock">--:--:--</div>
                 <div class="text-[11px] bg-blue-900/60 text-blue-100 px-2.5 py-1 rounded font-mono hidden md:block" id="userBadge">
@@ -202,9 +199,6 @@
                             <button onclick="window.print()" class="flex-1 sm:flex-none bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition text-center">
                                 🖨️ Print
                             </button>
-                            <button onclick="promptDeleteSelectedLogs()" class="flex-1 sm:flex-none bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-medium px-3 py-2 rounded-lg transition border border-rose-200 text-center">
-                                🗑️ Delete Selected (<span id="selectedLogsCount">0</span>)
-                            </button>
                             <button onclick="promptClearTodayRecords()" class="flex-1 sm:flex-none bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium px-3 py-2 rounded-lg transition border border-red-200 text-center">
                                 🗑️ Clear Today
                             </button>
@@ -246,9 +240,6 @@
                         <table class="w-full text-left text-sm">
                             <thead class="bg-gray-100 text-gray-600 uppercase text-[11px] tracking-wider border-b">
                                 <tr>
-                                    <th class="py-3 px-4 w-10">
-                                        <input type="checkbox" id="selectAllLogsCheckbox" onchange="toggleSelectAllLogs(this)">
-                                    </th>
                                     <th class="py-3 px-4">Worker ID</th>
                                     <th class="py-3 px-4">Name</th>
                                     <th class="py-3 px-4">Type / Contractor</th>
@@ -289,9 +280,6 @@
                         <button onclick="exportToCSV(false)" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition text-center">
                             📥 Export CSV
                         </button>
-                        <button onclick="promptDeleteSelectedLogs()" class="flex-1 sm:flex-none bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-medium px-3 py-2 rounded-lg transition border border-rose-200 text-center">
-                            🗑️ Delete Selected (<span id="selectedHistoryLogsCount">0</span>)
-                        </button>
                         <button onclick="promptClearAllRecords()" class="flex-1 sm:flex-none bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium px-3 py-2 rounded-lg transition border border-red-200 text-center">
                             🗑️ Clear All Logs
                         </button>
@@ -329,9 +317,6 @@
                     <table class="w-full text-left text-sm">
                         <thead class="bg-gray-100 text-gray-600 uppercase text-[11px] tracking-wider border-b">
                             <tr>
-                                <th class="py-3 px-4 w-10">
-                                    <input type="checkbox" id="selectAllHistoryLogsCheckbox" onchange="toggleSelectAllHistoryLogs(this)">
-                                </th>
                                 <th class="py-3 px-4">Date</th>
                                 <th class="py-3 px-4">Worker ID</th>
                                 <th class="py-3 px-4">Name</th>
@@ -502,7 +487,6 @@
         let workers = {};
         let attendanceLogs = [];
         let selectedWorkerIds = new Set();
-        let selectedLogIds = new Set();
         let html5QrcodeScanner = null;
         let activeBadgeWorker = null;
         let currentUser = null;
@@ -510,10 +494,10 @@
         let logsUnsub = null;
         let workersSnapshotReady = false;
         let logsSnapshotReady = false;
-        let pendingClearAction = null; // 'today', 'all', or 'selected_logs'
+        let pendingClearAction = null; // 'today' or 'all'
 
         const SCAN_COOLDOWN_MS = 5 * 60 * 1000;
-        const ADMIN_CLEAR_PASSWORD = "keci123"; // Password for clearing/deleting logs
+        const ADMIN_CLEAR_PASSWORD = "admin123"; // Password for clearing logs
 
         function getLocalDateString(date = new Date()) {
             const year = date.getFullYear();
@@ -643,9 +627,6 @@
         window.printSelectedBadges = printSelectedBadges;
         window.toggleSelectAllWorkers = toggleSelectAllWorkers;
         window.toggleWorkerSelect = toggleWorkerSelect;
-        window.toggleSelectAllLogs = toggleSelectAllLogs;
-        window.toggleSelectAllHistoryLogs = toggleSelectAllHistoryLogs;
-        window.toggleLogSelect = toggleLogSelect;
         window.importWorkersCSV = importWorkersCSV;
         window.downloadCSVTemplate = downloadCSVTemplate;
         window.deleteWorkerProfile = deleteWorkerProfile;
@@ -658,7 +639,6 @@
         window.exportToCSV = exportToCSV;
         window.promptClearTodayRecords = promptClearTodayRecords;
         window.promptClearAllRecords = promptClearAllRecords;
-        window.promptDeleteSelectedLogs = promptDeleteSelectedLogs;
         window.closeClearAuthModal = closeClearAuthModal;
         window.executeConfirmedClear = executeConfirmedClear;
 
@@ -830,40 +810,6 @@
             if (cb.checked) selectedWorkerIds.add(id);
             else selectedWorkerIds.delete(id);
             document.getElementById('selectedCount').innerText = selectedWorkerIds.size;
-        }
-
-        function toggleSelectAllLogs(master) {
-            const checkboxes = document.querySelectorAll('.log-checkbox');
-            checkboxes.forEach(cb => {
-                cb.checked = master.checked;
-                if (master.checked) selectedLogIds.add(cb.value);
-                else selectedLogIds.delete(cb.value);
-            });
-            updateSelectedLogsCountUI();
-        }
-
-        function toggleSelectAllHistoryLogs(master) {
-            const checkboxes = document.querySelectorAll('.history-log-checkbox');
-            checkboxes.forEach(cb => {
-                cb.checked = master.checked;
-                if (master.checked) selectedLogIds.add(cb.value);
-                else selectedLogIds.delete(cb.value);
-            });
-            updateSelectedLogsCountUI();
-        }
-
-        function toggleLogSelect(docId, cb) {
-            if (cb.checked) selectedLogIds.add(docId);
-            else selectedLogIds.delete(docId);
-            updateSelectedLogsCountUI();
-        }
-
-        function updateSelectedLogsCountUI() {
-            const count = selectedLogIds.size;
-            const countSpan1 = document.getElementById('selectedLogsCount');
-            const countSpan2 = document.getElementById('selectedHistoryLogsCount');
-            if (countSpan1) countSpan1.innerText = count;
-            if (countSpan2) countSpan2.innerText = count;
         }
 
         function importWorkersCSV() {
@@ -1096,18 +1042,6 @@
             document.getElementById('clearAuthPassword').focus();
         }
 
-        function promptDeleteSelectedLogs() {
-            if (selectedLogIds.size === 0) {
-                alert("Please select at least one attendance log using the checkboxes to delete!");
-                return;
-            }
-            pendingClearAction = 'selected_logs';
-            document.getElementById('clearAuthPromptText').innerText = `Enter administrator password to delete ${selectedLogIds.size} selected attendance log(s).`;
-            document.getElementById('clearAuthPassword').value = '';
-            document.getElementById('clearAuthModal').classList.remove('hidden');
-            document.getElementById('clearAuthPassword').focus();
-        }
-
         function closeClearAuthModal() {
             document.getElementById('clearAuthModal').classList.add('hidden');
             pendingClearAction = null;
@@ -1126,8 +1060,6 @@
                 await clearTodayRecordsConfirmed();
             } else if (pendingClearAction === 'all') {
                 await clearAllRecordsConfirmed();
-            } else if (pendingClearAction === 'selected_logs') {
-                await deleteSelectedLogsConfirmed();
             }
         }
 
@@ -1139,9 +1071,7 @@
             for (let r of todayLogs) {
                 const docKey = r.docId || `${r.date}_${r.id}`;
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docKey));
-                selectedLogIds.delete(docKey);
             }
-            updateSelectedLogsCountUI();
             showAlert("Cleared today's records from cloud with password authentication.", "bg-amber-100 border-amber-400 text-amber-800");
         }
 
@@ -1151,19 +1081,7 @@
                 const docKey = r.docId || `${r.date}_${r.id}`;
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docKey));
             }
-            selectedLogIds.clear();
-            updateSelectedLogsCountUI();
             showAlert("Cleared all historical records from cloud with password authentication.", "bg-amber-100 border-amber-400 text-amber-800");
-        }
-
-        async function deleteSelectedLogsConfirmed() {
-            if (!currentUser) return;
-            for (let docId of selectedLogIds) {
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docId));
-            }
-            selectedLogIds.clear();
-            updateSelectedLogsCountUI();
-            showAlert("Successfully deleted selected attendance logs.", "bg-amber-100 border-amber-400 text-amber-800");
         }
 
         function renderDailyTable() {
@@ -1196,14 +1114,11 @@
 
             if (todayLogs.length === 0) {
                 const emptyMsg = `<div class="py-6 text-center text-gray-400 text-xs">No records logged for today matching filter. Scan barcode to check in.</div>`;
-                tbody.innerHTML = `<tr><td colspan="10" class="py-6 text-center text-gray-400">No records logged for today matching filter. Scan barcode to check in.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-gray-400">No records logged for today matching filter. Scan barcode to check in.</td></tr>`;
                 mobileList.innerHTML = emptyMsg;
             } else {
                 todayLogs.forEach((r) => {
                     let globalIndex = attendanceLogs.indexOf(r);
-                    let docKey = r.docId || `${r.date}_${r.id}`;
-                    let isChecked = selectedLogIds.has(docKey) ? 'checked' : '';
-
                     let typeBadge = r.type === 'Contractor'
                         ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold text-[10px]">Contractor (${r.agency || 'Independent'})</span>`
                         : `<span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-semibold text-[10px]">Regular</span>`;
@@ -1218,9 +1133,6 @@
 
                     tbody.innerHTML += `
                         <tr class="hover:bg-gray-50 border-b">
-                            <td class="py-3 px-4">
-                                <input type="checkbox" value="${docKey}" ${isChecked} onchange="toggleLogSelect('${docKey}', this)" class="log-checkbox">
-                            </td>
                             <td class="py-3 px-4 font-bold text-gray-700">${r.id}</td>
                             <td class="py-3 px-4 font-sans text-gray-900">${r.name}</td>
                             <td class="py-3 px-4">${typeBadge}</td>
@@ -1236,15 +1148,12 @@
                     `;
 
                     mobileList.innerHTML += `
-                        <div class="p-4 bg-white space-y-2 border-b">
+                        <div class="p-4 bg-white space-y-2">
                             <div class="flex justify-between items-start">
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" value="${docKey}" ${isChecked} onchange="toggleLogSelect('${docKey}', this)" class="log-checkbox w-4 h-4">
-                                    <div>
-                                        <span class="font-bold text-gray-800 text-sm font-mono">${r.id}</span> - 
-                                        <span class="font-semibold text-gray-900 text-sm">${r.name}</span>
-                                        <div class="mt-1">${typeBadge}</div>
-                                    </div>
+                                <div>
+                                    <span class="font-bold text-gray-800 text-sm font-mono">${r.id}</span> - 
+                                    <span class="font-semibold text-gray-900 text-sm">${r.name}</span>
+                                    <div class="mt-1">${typeBadge}</div>
                                 </div>
                                 ${statusBadge}
                             </div>
@@ -1299,14 +1208,11 @@
 
             if (filteredLogs.length === 0) {
                 const emptyMsg = `<div class="py-6 text-center text-gray-400 text-xs">No historical records found matching filter.</div>`;
-                tbody.innerHTML = `<tr><td colspan="11" class="py-6 text-center text-gray-400">No historical records found matching filter.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" class="py-6 text-center text-gray-400">No historical records found matching filter.</td></tr>`;
                 mobileList.innerHTML = emptyMsg;
             } else {
                 [...filteredLogs].reverse().forEach((r) => {
                     let globalIndex = attendanceLogs.indexOf(r);
-                    let docKey = r.docId || `${r.date}_${r.id}`;
-                    let isChecked = selectedLogIds.has(docKey) ? 'checked' : '';
-
                     let typeBadge = r.type === 'Contractor'
                         ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold text-[10px]">Contractor (${r.agency || 'Independent'})</span>`
                         : `<span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-semibold text-[10px]">Regular</span>`;
@@ -1321,9 +1227,6 @@
 
                     tbody.innerHTML += `
                         <tr class="hover:bg-gray-50 border-b">
-                            <td class="py-3 px-4">
-                                <input type="checkbox" value="${docKey}" ${isChecked} onchange="toggleLogSelect('${docKey}', this)" class="history-log-checkbox">
-                            </td>
                             <td class="py-3 px-4 font-semibold text-gray-600">${r.date}</td>
                             <td class="py-3 px-4 font-bold text-gray-700">${r.id}</td>
                             <td class="py-3 px-4 font-sans text-gray-900">${r.name}</td>
@@ -1340,12 +1243,9 @@
                     `;
 
                     mobileList.innerHTML += `
-                        <div class="p-4 bg-white space-y-2 border-b">
+                        <div class="p-4 bg-white space-y-2">
                             <div class="flex justify-between items-center text-xs text-gray-500">
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" value="${docKey}" ${isChecked} onchange="toggleLogSelect('${docKey}', this)" class="history-log-checkbox w-4 h-4">
-                                    <span class="font-bold text-gray-700">${r.date}</span>
-                                </div>
+                                <span class="font-bold text-gray-700">${r.date}</span>
                                 ${statusBadge}
                             </div>
                             <div>
@@ -1423,7 +1323,7 @@
                     `;
 
                     mobileList.innerHTML += `
-                        <div class="p-4 bg-white space-y-2 border-b">
+                        <div class="p-4 bg-white space-y-2">
                             <div class="flex justify-between items-start">
                                 <div class="flex items-center gap-2">
                                     <input type="checkbox" value="${id}" ${isChecked} onchange="toggleWorkerSelect('${id}', this)" class="worker-checkbox w-4 h-4">
