@@ -46,7 +46,7 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-slate-100 text-gray-800 font-sans min-h-screen pb-10">
+<body class="bg-slate-100 text-gray-800 font-sans min-h-screen pb-2">
 
     <!-- Printable Barcode Badge Area (Single & Bulk Badge Printing) -->
     <div id="printBadgeArea" class="print-only p-2">
@@ -57,19 +57,19 @@
 
     <!-- Header -->
     <header class="bg-blue-700 text-white shadow-md sticky top-0 z-30 no-print">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
-            <div class="flex items-center gap-3">
-                <h1 class="text-lg sm:text-2xl font-bold tracking-wide flex items-center gap-2">
+        <div class="max-w-7xl mx-auto px-4 py-2 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center gap-2 sm:gap-3">
+                <h1 class="text-base sm:text-xl font-bold tracking-wide flex items-center gap-1.5">
                     <span>👷</span> Worker Attendance & OT
                 </h1>
-                <span id="syncStatus" class="bg-blue-900 text-blue-200 text-xs px-2.5 py-1 rounded-full flex items-center gap-1 font-mono">
+                <span id="syncStatus" class="bg-blue-900 text-blue-200 text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1 font-mono">
                     <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse" id="syncStatusDot"></span>
                     <span id="syncStatusText">Connecting...</span>
                 </span>
             </div>
 
             <div class="flex items-center gap-2 sm:gap-3">
-                <div class="text-xs sm:text-sm bg-blue-800 px-3 py-1 rounded-md font-mono hidden sm:block" id="liveClock">--:--:--</div>
+                <div class="text-xs bg-blue-800 px-2.5 py-1 rounded font-mono hidden sm:block" id="liveClock">--:--:--</div>
                 
                 <!-- Auth User Profile Badge & Login Button -->
                 <div id="authHeaderWidget" class="flex items-center gap-2">
@@ -78,23 +78,23 @@
                         <span class="text-blue-300">|</span>
                         <span id="userNameDisplay" class="max-w-[100px] truncate">Admin User</span>
                     </div>
-                    <button id="createUserHeaderBtn" onclick="openCreateUserModal()" class="hidden bg-emerald-500 hover:bg-emerald-600 text-blue-950 font-bold text-xs px-3 py-1.5 rounded-md transition shadow-sm flex items-center gap-1">
+                    <button id="createUserHeaderBtn" onclick="openCreateUserModal()" class="hidden bg-emerald-500 hover:bg-emerald-600 text-blue-950 font-bold text-xs px-2.5 py-1 rounded transition shadow-sm flex items-center gap-1">
                         ➕ <span>Create User</span>
                     </button>
-                    <button id="loginHeaderBtn" onclick="openLoginModal()" class="bg-amber-500 hover:bg-amber-600 text-blue-950 font-bold text-xs px-3 py-1.5 rounded-md transition shadow-sm flex items-center gap-1">
+                    <button id="loginHeaderBtn" onclick="openLoginModal()" class="bg-amber-500 hover:bg-amber-600 text-blue-950 font-bold text-xs px-2.5 py-1 rounded transition shadow-sm flex items-center gap-1">
                         🔑 <span>Log In</span>
                     </button>
-                    <button id="logoutHeaderBtn" onclick="handleLogout()" class="hidden bg-red-600 hover:bg-red-700 text-white font-medium text-xs px-2.5 py-1.5 rounded-md transition">
+                    <button id="logoutHeaderBtn" onclick="handleLogout()" class="hidden bg-red-600 hover:bg-red-700 text-white font-medium text-xs px-2 py-1 rounded transition">
                         🚪 Logout
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- Mobile Scrollable Navigation Tabs -->
-        <div class="bg-blue-800 px-4 py-2 border-t border-blue-600">
-            <div class="max-w-7xl mx-auto flex gap-2 overflow-x-auto no-scrollbar text-xs sm:text-sm font-medium">
-                <button id="tabBtnDaily" onclick="switchTab('daily')" class="px-3 py-2 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition">
+        <!-- Navigation Tabs -->
+        <div class="bg-blue-800 px-4 py-1 border-t border-blue-600">
+            <div class="max-w-7xl mx-auto flex gap-2 overflow-x-auto no-scrollbar text-xs font-medium">
+                <button id="tabBtnDaily" onclick="switchTab('daily')" class="px-3 py-1.5 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition">
                     📅 Daily Punch Log
                 </button>
                 <button id="tabBtnHistory" onclick="switchTab('history')" class="px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition">
@@ -191,210 +191,197 @@
 
     <!-- Modal 2: Modify Out Time Modal -->
     <div id="modifyOutTimeModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl border border-gray-100 relative">
-            <button onclick="closeModifyOutTimeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+        <div class="bg-white rounded-xl p-5 max-w-sm w-full shadow-2xl border border-gray-200 relative">
+            <button onclick="closeModifyOutTimeModal()" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-lg font-bold">&times;</button>
+            <h3 class="text-base font-bold text-gray-800 mb-1">🕒 Modify Worker Out Time</h3>
+            <p id="modOutWorkerName" class="text-xs text-blue-700 font-semibold mb-3"></p>
             
-            <h3 class="text-base font-bold text-gray-800 mb-1 flex items-center gap-2">
-                <span>🕒</span> Modify Out Time
-            </h3>
-            <p class="text-xs text-gray-500 mb-4">Set or update employee checkout time. Overtime will automatically recalculate.</p>
-
-            <div class="bg-slate-50 p-3 rounded-lg border border-gray-200 mb-4 space-y-1 text-xs">
-                <div><span class="text-gray-500">Worker:</span> <strong id="modOutWorkerName" class="text-gray-800">--</strong></div>
-                <div><span class="text-gray-500">In Time:</span> <span id="modOutInTime" class="font-mono font-bold text-emerald-700">--:--</span></div>
-                <div><span class="text-gray-500">Current Out Time:</span> <span id="modOutCurrentTime" class="font-mono font-bold text-purple-700">--:--</span></div>
-            </div>
-
-            <div class="space-y-3 mb-5">
-                <label class="block text-xs font-semibold text-gray-700">Select New Out Time (HH:MM)</label>
-                <div class="flex items-center gap-2">
-                    <input type="time" id="newOutTimeInput" step="1" class="w-full border-2 border-blue-400 rounded-lg p-2.5 text-base font-mono focus:ring-2 focus:ring-blue-600 outline-none">
-                    <button onclick="setCurrentOutTimeInModal()" class="bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs font-bold px-3 py-2.5 rounded-lg transition whitespace-nowrap">
-                        Now
+            <div class="space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs mb-4">
+                <div class="flex justify-between">
+                    <span class="text-gray-500">In Time:</span>
+                    <strong id="modOutInTime" class="text-emerald-700 font-mono">--:--</strong>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Current Out Time:</span>
+                    <strong id="modOutCurrentTime" class="text-purple-700 font-mono">--:--</strong>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-1">Set New Out Time (24h format):</label>
+                    <input type="time" id="newOutTimeInput" class="w-full border rounded-lg p-2 font-mono text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="setCurrentOutTimeInModal()" class="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-800 py-1 rounded text-[11px] font-semibold transition">
+                        ⚡ Set Current Time
+                    </button>
+                    <button onclick="clearOutTimeInModal()" class="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-800 py-1 rounded text-[11px] font-semibold transition">
+                        🗑️ Reset (IN Status)
                     </button>
                 </div>
             </div>
 
-            <div class="flex gap-2">
-                <button onclick="clearOutTimeInModal()" class="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 font-semibold py-2 rounded-lg text-xs transition">
-                    Clear Out Time
-                </button>
-                <button onclick="saveModifiedOutTime()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs transition">
-                    Save Changes
-                </button>
+            <div class="flex gap-2 justify-end">
+                <button onclick="closeModifyOutTimeModal()" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded-lg transition">Cancel</button>
+                <button onclick="saveModifiedOutTime()" class="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg transition">Save Out Time</button>
             </div>
         </div>
     </div>
 
-    <main class="max-w-7xl mx-auto p-3 sm:p-6 no-print">
+    <main class="max-w-7xl mx-auto p-2 sm:p-4 no-print">
 
         <!-- TAB 1: DAILY ATTENDANCE (CURRENT DATE ONLY) -->
-        <div id="tabDailyView" class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div id="tabDailyView" class="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-start">
 
-            <!-- Left Column: Scanner & Settings -->
-            <div class="space-y-4 sm:space-y-6 no-print">
+            <!-- Left Column: Scanner & Settings (Compact 4 cols) -->
+            <div class="lg:col-span-4 space-y-3 no-print">
 
-                <!-- Shift Settings Card -->
-                <div class="bg-white rounded-xl shadow-sm p-4 sm:p-5 border border-gray-200">
-                    <h2 class="text-base sm:text-lg font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                        ⚙️ Shift Overtime Rule
+                <!-- Barcode Scanner Card (Primary Focus) -->
+                <div class="bg-white rounded-lg shadow-sm p-3 border border-gray-200">
+                    <h2 class="text-sm font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                        <span>📷 Scan Worker ID</span>
+                        <span class="text-[10px] text-gray-400 font-normal">Auto Sync</span>
                     </h2>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Standard Shift Work (Hours)</label>
-                        <input type="number" id="shiftHours" value="8" min="1" max="24" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" onchange="recalculateAllOT()">
-                    </div>
-                    <p class="text-[11px] text-gray-500 mt-2 bg-amber-50 p-2 rounded border border-amber-200">
-                        ⚡ <strong>Rule:</strong> OT applies only if total hours worked exceeds shift time by <strong>30 minutes or more</strong> (&ge; 8.5h for an 8h shift).
-                    </p>
-                </div>
-
-                <!-- Barcode Scanner Card -->
-                <div class="bg-white rounded-xl shadow-sm p-4 sm:p-5 border border-gray-200">
-                    <h2 class="text-base sm:text-lg font-semibold text-gray-700 mb-2">📷 Scan Worker ID</h2>
                     
-                    <div class="mb-3">
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Barcode Reader Input (Auto Entry)</label>
-                        <input type="text" id="barcodeInput" placeholder="Tap here to scan..." 
-                            class="w-full border-2 border-blue-400 rounded-lg p-3 text-base focus:ring-2 focus:ring-blue-600 outline-none font-mono" autofocus>
-                        <p class="text-[11px] text-gray-400 mt-1">Plug-and-play USB scanner or keyboard entry. Real-time Firebase sync active.</p>
+                    <div class="mb-2">
+                        <input type="text" id="barcodeInput" placeholder="Tap here & scan barcode..." 
+                            class="w-full border-2 border-blue-400 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none font-mono" autofocus>
                     </div>
 
-                    <div class="border-t pt-3">
-                        <button id="toggleCameraBtn" onclick="toggleCameraScanner()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-medium py-2.5 rounded-lg transition text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-[0.98]">
+                    <div class="pt-1">
+                        <button id="toggleCameraBtn" onclick="toggleCameraScanner()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-medium py-1.5 rounded-md transition text-xs flex items-center justify-center gap-1.5 active:scale-[0.98]">
                             <span>📹</span> Start / Stop Camera Scanner
                         </button>
-                        <div id="reader" class="mt-3 overflow-hidden rounded-lg border border-gray-300 hidden"></div>
+                        <div id="reader" class="mt-2 overflow-hidden rounded-lg border border-gray-300 hidden"></div>
                     </div>
                 </div>
 
-                <!-- Register Worker Form -->
-                <div class="bg-white rounded-xl shadow-sm p-4 sm:p-5 border border-gray-200">
-                    <h2 class="text-base sm:text-lg font-semibold text-gray-700 mb-2">➕ Register New Worker</h2>
-                    <form id="addWorkerForm" onsubmit="registerWorker(event)" class="space-y-3">
-                        <div>
-                            <input type="text" id="newWorkerId" placeholder="Worker ID (Barcode)" required class="w-full border rounded-lg p-2.5 text-sm font-mono">
+                <!-- Shift Settings Card & Register Worker Collapsible / Compact Stack -->
+                <div class="grid grid-cols-1 gap-3">
+                    <!-- Shift Settings -->
+                    <div class="bg-white rounded-lg shadow-sm p-3 border border-gray-200">
+                        <div class="flex items-center justify-between gap-2">
+                            <label class="text-xs font-semibold text-gray-700 flex items-center gap-1">
+                                ⚙️ Shift Overtime Rule (Hrs):
+                            </label>
+                            <input type="number" id="shiftHours" value="8" min="1" max="24" class="w-16 border rounded p-1 text-xs text-center font-bold focus:ring-2 focus:ring-blue-500 outline-none" onchange="recalculateAllOT()">
                         </div>
-                        <div>
-                            <input type="text" id="newWorkerName" placeholder="Full Name" required class="w-full border rounded-lg p-2.5 text-sm">
-                        </div>
-                        <div>
-                            <input type="text" id="newWorkerDept" placeholder="Department (e.g. Production)" class="w-full border rounded-lg p-2.5 text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-500 mb-1">Employment Category</label>
-                            <select id="newWorkerType" class="w-full border rounded-lg p-2.5 text-sm bg-white" onchange="toggleContractorInput()">
-                                <option value="Regular">Regular Employee</option>
-                                <option value="Contractor">Contractor</option>
-                            </select>
-                        </div>
-                        <div id="agencyInputGroup" class="hidden">
-                            <input type="text" id="newWorkerAgency" placeholder="Contractor Company Name" class="w-full border rounded-lg p-2.5 text-sm bg-amber-50 border-amber-200">
-                        </div>
-                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2.5 rounded-lg transition active:scale-[0.98]">
-                            Save Worker to Cloud & Badge
-                        </button>
-                    </form>
+                        <p class="text-[10px] text-gray-500 mt-1.5 bg-amber-50 p-1.5 rounded border border-amber-200 leading-tight">
+                            ⚡ OT applies if work time exceeds shift by <strong>30+ mins</strong> (&ge;8.5h).
+                        </p>
+                    </div>
 
-                    <!-- Preview Badge Card with Centered Text and Barcode -->
-                    <div id="barcodePreviewCard" class="hidden mt-4 pt-4 border-t border-gray-200 text-center">
-                        <p class="text-[11px] font-semibold text-gray-500 mb-2">LAST GENERATED BARCODE BADGE (6cm × 4cm)</p>
-                        <div class="bg-gray-50 p-4 rounded-lg border flex flex-col items-center justify-center text-center w-full mx-auto" style="min-height: 160px;">
-                            <p id="badgeName" class="font-bold text-sm text-gray-800 leading-tight mb-1"></p>
-                            <p id="badgeType" class="text-xs font-semibold text-blue-600 mb-1"></p>
-                            <p id="badgeDept" class="text-xs text-gray-500 mb-2"></p>
-                            <div class="flex justify-center items-center w-full my-1">
-                                <svg id="previewBarcodeSvg" class="mx-auto block"></svg>
+                    <!-- Register Worker Form (Compact) -->
+                    <div class="bg-white rounded-lg shadow-sm p-3 border border-gray-200">
+                        <h2 class="text-xs font-bold text-gray-700 mb-2">➕ Register New Worker</h2>
+                        <form id="addWorkerForm" onsubmit="registerWorker(event)" class="space-y-2">
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" id="newWorkerId" placeholder="ID (Barcode)" required class="w-full border rounded p-1.5 text-xs font-mono">
+                                <input type="text" id="newWorkerName" placeholder="Full Name" required class="w-full border rounded p-1.5 text-xs">
                             </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" id="newWorkerDept" placeholder="Department" class="w-full border rounded p-1.5 text-xs">
+                                <select id="newWorkerType" class="w-full border rounded p-1.5 text-xs bg-white" onchange="toggleContractorInput()">
+                                    <option value="Regular">Regular</option>
+                                    <option value="Contractor">Contractor</option>
+                                </select>
+                            </div>
+                            <div id="agencyInputGroup" class="hidden">
+                                <input type="text" id="newWorkerAgency" placeholder="Contractor Company Name" class="w-full border rounded p-1.5 text-xs bg-amber-50 border-amber-200">
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium py-1.5 rounded transition active:scale-[0.98]">
+                                Save Worker to Cloud & Badge
+                            </button>
+                        </form>
+
+                        <!-- Preview Badge Card -->
+                        <div id="barcodePreviewCard" class="hidden mt-2 pt-2 border-t border-gray-200 text-center">
+                            <div class="bg-gray-50 p-2 rounded border flex flex-col items-center justify-center text-center w-full mx-auto">
+                                <p id="badgeName" class="font-bold text-xs text-gray-800 leading-tight"></p>
+                                <p id="badgeType" class="text-[10px] font-semibold text-blue-600"></p>
+                                <p id="badgeDept" class="text-[10px] text-gray-500"></p>
+                                <div class="flex justify-center items-center w-full my-0.5">
+                                    <svg id="previewBarcodeSvg" class="mx-auto block"></svg>
+                                </div>
+                            </div>
+                            <button onclick="printSingleBadgeFromPreview()" class="mt-1.5 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold py-1 rounded transition flex items-center justify-center gap-1">
+                                🖨️ Print Badge (6×4 cm)
+                            </button>
                         </div>
-                        <button onclick="printSingleBadgeFromPreview()" class="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-1 active:scale-[0.98]">
-                            🖨️ Print Barcode Badge (6×4 cm)
-                        </button>
                     </div>
                 </div>
 
             </div>
 
-            <!-- Right Column: Today's Logs View -->
-            <div class="lg:col-span-2 space-y-4 sm:space-y-6">
+            <!-- Right Column: Today's Logs View (Expanded 8 cols with view-height capped table) -->
+            <div class="lg:col-span-8 space-y-3">
 
                 <!-- Alert Message Banner -->
-                <div id="scanAlert" class="hidden p-3 sm:p-4 rounded-xl border font-medium text-xs sm:text-sm transition-all duration-300"></div>
+                <div id="scanAlert" class="hidden p-2 rounded-lg border font-medium text-xs transition-all duration-300"></div>
 
                 <!-- Main Logs Panel -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="p-4 sm:p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-3 no-print">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="p-3 border-b border-gray-200 flex flex-wrap justify-between items-center gap-2 no-print">
                         <div>
-                            <h2 class="text-base sm:text-lg font-semibold text-gray-800">📋 Today's Attendance Logs (Live)</h2>
-                            <p class="text-xs text-gray-500" id="currentDateDisplay"></p>
+                            <h2 class="text-sm sm:text-base font-bold text-gray-800">📋 Today's Attendance Logs (Live)</h2>
+                            <p class="text-[11px] text-gray-500" id="currentDateDisplay"></p>
                         </div>
-                        <div class="flex flex-wrap gap-2 w-full sm:w-auto">
-                            <button onclick="exportToCSV(true)" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition text-center">
+                        <div class="flex flex-wrap gap-1.5">
+                            <button onclick="exportToCSV(true)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-medium px-2.5 py-1 rounded transition text-center">
                                 📥 CSV
                             </button>
-                            <button onclick="window.print()" class="flex-1 sm:flex-none bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition text-center">
+                            <button onclick="window.print()" class="bg-gray-600 hover:bg-gray-700 text-white text-[11px] font-medium px-2.5 py-1 rounded transition text-center">
                                 🖨️ Print
                             </button>
-                            <button onclick="promptClearTodayRecords()" class="flex-1 sm:flex-none bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium px-3 py-2 rounded-lg transition border border-red-200 text-center">
-                                🗑️ Clear Today
+                            <button onclick="promptClearTodayRecords()" class="bg-red-50 hover:bg-red-100 text-red-600 text-[11px] font-medium px-2.5 py-1 rounded transition border border-red-200 text-center">
+                                🗑️ Clear
                             </button>
                         </div>
                     </div>
 
-                    <!-- Filter Strip -->
-                    <div class="p-3 bg-slate-50 border-b border-gray-200 flex items-center gap-2 text-xs no-print">
-                        <span class="font-semibold text-gray-600">Filter:</span>
-                        <select id="dailyFilterType" onchange="renderDailyTable()" class="border rounded px-2.5 py-1.5 bg-white text-xs">
-                            <option value="ALL">All Worker Types</option>
-                            <option value="Regular">Regular Only</option>
-                            <option value="Contractor">Contractors Only</option>
-                        </select>
-                    </div>
+                    <!-- Filter Strip & Summary Stats Combined Strip -->
+                    <div class="p-2 bg-slate-50 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2 text-xs no-print">
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-semibold text-gray-600 text-[11px]">Filter:</span>
+                            <select id="dailyFilterType" onchange="renderDailyTable()" class="border rounded px-2 py-1 bg-white text-xs focus:ring-1 focus:ring-blue-500 outline-none">
+                                <option value="ALL">All Workers</option>
+                                <option value="Regular">Regular Only</option>
+                                <option value="Contractor">Contractors Only</option>
+                            </select>
+                        </div>
 
-                    <!-- Summary Stats Grid -->
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 sm:p-4 bg-gray-50 border-b border-gray-200 text-center no-print">
-                        <div class="bg-white p-2.5 sm:p-3 rounded-lg border shadow-sm">
-                            <span class="block text-[11px] text-gray-500">Present Today</span>
-                            <span class="text-base sm:text-lg font-bold text-blue-600" id="statPresent">0</span>
-                        </div>
-                        <div class="bg-white p-2.5 sm:p-3 rounded-lg border shadow-sm">
-                            <span class="block text-[11px] text-gray-500">Contractors</span>
-                            <span class="text-base sm:text-lg font-bold text-amber-600" id="statContractors">0</span>
-                        </div>
-                        <div class="bg-white p-2.5 sm:p-3 rounded-lg border shadow-sm">
-                            <span class="block text-[11px] text-gray-500">Completed Shift</span>
-                            <span class="text-base sm:text-lg font-bold text-emerald-600" id="statCompleted">0</span>
-                        </div>
-                        <div class="bg-white p-2.5 sm:p-3 rounded-lg border shadow-sm">
-                            <span class="block text-[11px] text-gray-500">Total OT (Hrs)</span>
-                            <span class="text-base sm:text-lg font-bold text-purple-600" id="statTotalOT">0.00</span>
+                        <!-- Mini Stats Inline Pill -->
+                        <div class="flex items-center gap-3 font-mono text-[11px]">
+                            <div><span class="text-gray-500">Present:</span> <strong id="statPresent" class="text-blue-600 font-bold">0</strong></div>
+                            <div><span class="text-gray-500">Contractors:</span> <strong id="statContractors" class="text-amber-600 font-bold">0</strong></div>
+                            <div><span class="text-gray-500">Completed:</span> <strong id="statCompleted" class="text-emerald-600 font-bold">0</strong></div>
+                            <div><span class="text-gray-500">OT:</span> <strong id="statTotalOT" class="text-purple-600 font-bold">0.00</strong>h</div>
                         </div>
                     </div>
 
-                    <!-- Desktop Table View -->
-                    <div class="hidden sm:block overflow-x-auto">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-gray-100 text-gray-600 uppercase text-[11px] tracking-wider border-b">
+                    <!-- Desktop Table View (Max Height Capped to prevent page scrollbar) -->
+                    <div class="hidden sm:block overflow-x-auto overflow-y-auto max-h-[calc(100vh-220px)]">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-gray-100 text-gray-600 uppercase text-[10px] tracking-wider border-b sticky top-0 z-10">
                                 <tr>
-                                    <th class="py-3 px-4">Worker ID</th>
-                                    <th class="py-3 px-4">Name</th>
-                                    <th class="py-3 px-4">Type / Contractor</th>
-                                    <th class="py-3 px-4">In Time</th>
-                                    <th class="py-3 px-4">Out Time</th>
-                                    <th class="py-3 px-4">Total Hrs</th>
-                                    <th class="py-3 px-4">OT (Hrs)</th>
-                                    <th class="py-3 px-4">Logged By</th>
-                                    <th class="py-3 px-4">Status</th>
-                                    <th class="py-3 px-4 text-right no-print">Action</th>
+                                    <th class="py-2 px-3">Worker ID</th>
+                                    <th class="py-2 px-3">Name</th>
+                                    <th class="py-2 px-3">Type</th>
+                                    <th class="py-2 px-3">In Time</th>
+                                    <th class="py-2 px-3">Out Time</th>
+                                    <th class="py-2 px-3">Total Hrs</th>
+                                    <th class="py-2 px-3">OT (Hrs)</th>
+                                    <th class="py-2 px-3">Logged By</th>
+                                    <th class="py-2 px-3">Status</th>
+                                    <th class="py-2 px-3 text-right no-print">Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="dailyTableBody" class="divide-y divide-gray-200 font-mono text-xs">
+                            <tbody id="dailyTableBody" class="divide-y divide-gray-200 font-mono text-[11px]">
                                 <!-- Dynamic Rows -->
                             </tbody>
                         </table>
                     </div>
 
                     <!-- Mobile Card List View -->
-                    <div id="dailyMobileList" class="block sm:hidden divide-y divide-gray-200">
+                    <div id="dailyMobileList" class="block sm:hidden divide-y divide-gray-200 max-h-[calc(100vh-280px)] overflow-y-auto">
                         <!-- Dynamic Mobile Cards -->
                     </div>
 
@@ -1590,8 +1577,8 @@
             });
 
             if (todayLogs.length === 0) {
-                const emptyMsg = `<div class="py-6 text-center text-gray-400 text-xs">No records logged for today matching filter. Scan barcode to check in.</div>`;
-                tbody.innerHTML = `<tr><td colspan="10" class="py-6 text-center text-gray-400">No records logged for today matching filter. Scan barcode to check in.</td></tr>`;
+                const emptyMsg = `<div class="py-4 text-center text-gray-400 text-xs">No records logged for today matching filter. Scan barcode to check in.</div>`;
+                tbody.innerHTML = `<tr><td colspan="10" class="py-4 text-center text-gray-400">No records logged for today matching filter. Scan barcode to check in.</td></tr>`;
                 mobileList.innerHTML = emptyMsg;
             } else {
                 todayLogs.forEach((r) => {
@@ -1601,12 +1588,12 @@
                     let loggedByUser = r.modifiedBy || r.completedBy || r.createdBy || 'System Auto Scan';
 
                     let typeBadge = r.type === 'Contractor'
-                        ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold text-[10px]">Contractor (${r.agency || 'Independent'})</span>`
-                        : `<span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-semibold text-[10px]">Regular</span>`;
+                        ? `<span class="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-semibold text-[9px]">Contractor</span>`
+                        : `<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-semibold text-[9px]">Regular</span>`;
 
                     let statusBadge = r.status === 'IN' 
-                        ? `<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-semibold text-[10px]">IN PUNCH</span>`
-                        : `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-semibold text-[10px]">COMPLETED</span>`;
+                        ? `<span class="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-semibold text-[9px]">IN</span>`
+                        : `<span class="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-semibold text-[9px]">DONE</span>`;
 
                     let otDisplay = parseFloat(r.otHours) > 0 
                         ? `<span class="text-red-600 font-bold">${r.otHours} ${r.manualOT ? '✏️' : ''}</span>`
@@ -1614,56 +1601,56 @@
 
                     tbody.innerHTML += `
                         <tr class="hover:bg-gray-50 border-b">
-                            <td class="py-3 px-4 font-bold text-gray-700">${r.id}</td>
-                            <td class="py-3 px-4 font-sans text-gray-900">${r.name}</td>
-                            <td class="py-3 px-4">${typeBadge}</td>
-                            <td class="py-3 px-4 text-emerald-700">${r.inTime}</td>
-                            <td class="py-3 px-4 text-purple-700">
-                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="hover:underline flex items-center gap-1 font-bold">
+                            <td class="py-2 px-3 font-bold text-gray-700">${r.id}</td>
+                            <td class="py-2 px-3 font-sans text-gray-900 font-medium">${r.name}</td>
+                            <td class="py-2 px-3">${typeBadge}</td>
+                            <td class="py-2 px-3 text-emerald-700">${r.inTime}</td>
+                            <td class="py-2 px-3 text-purple-700">
+                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="hover:underline flex items-center gap-0.5 font-bold">
                                     <span>${r.outTime || '--:--'}</span>
-                                    <span class="text-[10px] text-gray-400">✏️</span>
+                                    <span class="text-[9px] text-gray-400">✏️</span>
                                 </button>
                             </td>
-                            <td class="py-3 px-4 font-bold">${r.totalHours || '0.00'}</td>
-                            <td class="py-3 px-4 font-bold">${otDisplay}</td>
-                            <td class="py-3 px-4 text-gray-600 font-sans text-[11px] truncate max-w-[120px]" title="${loggedByUser}">👤 ${loggedByUser}</td>
-                            <td class="py-3 px-4">${statusBadge}</td>
-                            <td class="py-3 px-4 text-right no-print flex justify-end gap-1.5 items-center">
-                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="text-purple-700 hover:text-purple-900 text-[11px] font-semibold bg-purple-50 px-2 py-1 rounded border border-purple-200">🕒 Out</button>
-                                <button onclick="editManualOT(${globalIndex})" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold underline bg-blue-50 px-2 py-1 rounded border border-blue-200">✏️ OT</button>
-                                <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="text-red-600 hover:text-red-800 text-[11px] font-semibold bg-red-50 px-2 py-1 rounded border border-red-200">🗑️ Delete</button>
+                            <td class="py-2 px-3 font-bold">${r.totalHours || '0.00'}</td>
+                            <td class="py-2 px-3 font-bold">${otDisplay}</td>
+                            <td class="py-2 px-3 text-gray-600 font-sans text-[10px] truncate max-w-[100px]" title="${loggedByUser}">👤 ${loggedByUser}</td>
+                            <td class="py-2 px-3">${statusBadge}</td>
+                            <td class="py-2 px-3 text-right no-print flex justify-end gap-1 items-center">
+                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="text-purple-700 hover:text-purple-900 text-[10px] font-semibold bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">🕒 Out</button>
+                                <button onclick="editManualOT(${globalIndex})" class="text-blue-600 hover:text-blue-800 text-[10px] font-semibold underline bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">✏️ OT</button>
+                                <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="text-red-600 hover:text-red-800 text-[10px] font-semibold bg-red-50 px-1.5 py-0.5 rounded border border-red-200">🗑️</button>
                             </td>
                         </tr>
                     `;
 
                     mobileList.innerHTML += `
-                        <div class="p-4 bg-white space-y-2 border-b">
+                        <div class="p-3 bg-white space-y-1.5 border-b">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <span class="font-bold text-gray-800 text-sm font-mono">${r.id}</span> - 
-                                    <span class="font-semibold text-gray-900 text-sm">${r.name}</span>
-                                    <div class="mt-1">${typeBadge}</div>
+                                    <span class="font-bold text-gray-800 text-xs font-mono">${r.id}</span> - 
+                                    <span class="font-semibold text-gray-900 text-xs">${r.name}</span>
+                                    <div class="mt-0.5">${typeBadge}</div>
                                 </div>
                                 ${statusBadge}
                             </div>
-                            <div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-200 font-mono">
-                                <div><span class="text-gray-500 block text-[10px]">IN TIME</span><span class="text-emerald-700 font-bold">${r.inTime}</span></div>
+                            <div class="grid grid-cols-2 gap-1.5 text-[11px] bg-slate-50 p-2 rounded border border-slate-200 font-mono">
+                                <div><span class="text-gray-500 block text-[9px]">IN TIME</span><span class="text-emerald-700 font-bold">${r.inTime}</span></div>
                                 <div>
-                                    <span class="text-gray-500 block text-[10px]">OUT TIME</span>
-                                    <button onclick="openModifyOutTimeModal(${globalIndex})" class="text-purple-700 font-bold underline flex items-center gap-1">
+                                    <span class="text-gray-500 block text-[9px]">OUT TIME</span>
+                                    <button onclick="openModifyOutTimeModal(${globalIndex})" class="text-purple-700 font-bold underline flex items-center gap-0.5">
                                         <span>${r.outTime || '--:--'}</span> ✏️
                                     </button>
                                 </div>
-                                <div><span class="text-gray-500 block text-[10px]">TOTAL WORK</span><span class="font-bold">${r.totalHours || '0.00'} hrs</span></div>
-                                <div><span class="text-gray-500 block text-[10px]">OVERTIME</span><span class="font-bold">${otDisplay} hrs</span></div>
+                                <div><span class="text-gray-500 block text-[9px]">TOTAL WORK</span><span class="font-bold">${r.totalHours || '0.00'} hrs</span></div>
+                                <div><span class="text-gray-500 block text-[9px]">OVERTIME</span><span class="font-bold">${otDisplay} hrs</span></div>
                             </div>
-                            <div class="text-[11px] text-gray-500 flex items-center gap-1">
-                                <span>👤 Logged / Updated By:</span> <strong class="text-gray-700">${loggedByUser}</strong>
+                            <div class="text-[10px] text-gray-500 flex items-center gap-1">
+                                <span>👤 Logged By:</span> <strong class="text-gray-700">${loggedByUser}</strong>
                             </div>
-                            <div class="flex gap-2 pt-1 no-print">
-                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="flex-1 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 py-1.5 rounded text-xs font-semibold">🕒 Modify Out Time</button>
-                                <button onclick="editManualOT(${globalIndex})" class="flex-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 py-1.5 rounded text-xs font-semibold">✏️ OT</button>
-                                <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded text-xs font-semibold">🗑️</button>
+                            <div class="flex gap-1.5 pt-0.5 no-print">
+                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="flex-1 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 py-1 rounded text-[11px] font-semibold">🕒 Modify Out Time</button>
+                                <button onclick="editManualOT(${globalIndex})" class="flex-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 py-1 rounded text-[11px] font-semibold">✏️ OT</button>
+                                <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 px-2 py-1 rounded text-[11px] font-semibold">🗑️</button>
                             </div>
                         </div>
                     `;
@@ -1713,7 +1700,7 @@
                 [...filteredLogs].reverse().forEach((r) => {
                     let globalIndex = attendanceLogs.indexOf(r);
                     let docKey = r.docId || `${r.date}_${r.id}`;
-                    let safeName = r.name.replace(/'/g, "\\'");
+                    let safeName = r.name.replace(/'/g, "\\ me");
                     let loggedByUser = r.modifiedBy || r.completedBy || r.createdBy || 'System Auto Scan';
 
                     let typeBadge = r.type === 'Contractor'
