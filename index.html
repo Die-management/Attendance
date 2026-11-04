@@ -409,8 +409,8 @@
 
     <!-- Firebase v11 Module Script -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { 
+        import { initializeApp } from "firebase/app";
+        import { getAnalytics } from "firebase/analytics";
             getAuth, 
             signInAnonymously, 
             signInWithCustomToken, 
@@ -430,12 +430,12 @@
         const firebaseConfig = typeof __firebase_config !== 'undefined' 
             ? JSON.parse(__firebase_config) 
             : {
-                apiKey: "AIzaSyDemoPlaceholderKeyForFirebase",
-                authDomain: "demo-project.firebaseapp.com",
-                projectId: "demo-project",
-                storageBucket: "demo-project.appspot.com",
-                messagingSenderId: "1234567890",
-                appId: "1:1234567890:web:abcdef123456"
+                apiKey: "AIzaSyCMXQY6Y1VWNQUnH-utEdpAxk0qxSqtdvw",
+                authDomain: "attendance-afd2a.firebaseapp.com",
+                projectId: "attendance-afd2a",
+                storageBucket: "attendance-afd2a.firebasestorage.app",
+                messagingSenderId: "546193787959",
+                appId: "1:546193787959:web:736a11b4ee2b5d67a9c3b2"
             };
 
         // Initialize Firebase
