@@ -307,7 +307,7 @@
                         <button id="toggleCameraBtn" onclick="toggleCameraScanner()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-medium py-1.5 rounded-md transition text-xs flex items-center justify-center gap-1.5 active:scale-[0.98]">
                             <span>📹</span> Start / Stop Camera Scanner
                         </button>
-                        <div id="reader" class="mt-2 overflow-hidden rounded-lg border border-gray-300 hidden"></div>
+                        <div id="reader" class="mt-2 overflow-hidden rounded-lg border border-gray-300 hidden min-h-[250px]"></div>
                     </div>
                 </div>
 
@@ -559,6 +559,9 @@
                         <p class="text-xs text-gray-500">Manage registered workers, edit profiles, delete worker records, and print exact 6cm x 4cm barcode badges.</p>
                     </div>
                     <div class="flex flex-wrap gap-2">
+                        <button onclick="deleteSelectedDirWorkers()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1 shadow-sm">
+                            🗑️ Delete Selected Workers (<span id="dirSelectedDeleteCount">0</span>)
+                        </button>
                         <button onclick="printSelectedBadges()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow-sm">
                             🖨️ Print Selected Badges (<span id="dirSelectedCount">0</span>)
                         </button>
@@ -1232,12 +1235,14 @@
             });
 
             document.getElementById('dirSelectedCount').textContent = selectedDirWorkers.size;
+            document.getElementById('dirSelectedDeleteCount').textContent = selectedDirWorkers.size;
         }
 
         function toggleDirWorkerSelection(id, checked) {
             if (checked) selectedDirWorkers.add(id);
             else selectedDirWorkers.delete(id);
             document.getElementById('dirSelectedCount').textContent = selectedDirWorkers.size;
+            document.getElementById('dirSelectedDeleteCount').textContent = selectedDirWorkers.size;
         }
 
         function toggleSelectAllDir(masterCheckbox) {
@@ -1247,6 +1252,20 @@
                 selectedDirWorkers.clear();
             }
             renderDirectoryTable();
+        }
+
+        function deleteSelectedDirWorkers() {
+            if (selectedDirWorkers.size === 0) return alert("Select at least one worker profile to delete.");
+            if (currentUser && currentUser.role !== 'Admin') return alert("Restricted: Admin only.");
+            if (confirm(`Are you sure you want to delete ${selectedDirWorkers.size} selected worker profile(s) from the Master Directory?`)) {
+                selectedDirWorkers.forEach(workerId => {
+                    delete workersDirectory[workerId];
+                });
+                selectedDirWorkers.clear();
+                saveToCloud();
+                renderDirectoryTable();
+                showAlert(`🗑️ Selected worker profiles deleted successfully.`, 'warning');
+            }
         }
 
         function printSelectedBadges() {
@@ -1420,12 +1439,22 @@
             getAudioContext();
             const readerEl = document.getElementById('reader');
             if (isScannerRunning) {
-                if (html5QrcodeScanner) html5QrcodeScanner.clear();
+                if (html5QrcodeScanner) {
+                    html5QrcodeScanner.clear().catch(err => console.error("Camera clear error", err));
+                }
                 readerEl.classList.add('hidden');
                 isScannerRunning = false;
             } else {
                 readerEl.classList.remove('hidden');
-                html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+                
+                // Directly launch the camera scanner feed instantly
+                html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+                    fps: 15, 
+                    qrbox: { width: 250, height: 150 },
+                    rememberLastUsedCamera: true,
+                    supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+                }, false);
+
                 html5QrcodeScanner.render((text) => processBarcodeScan(text), () => {});
                 isScannerRunning = true;
             }
