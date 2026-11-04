@@ -493,53 +493,38 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div class="p-4 sm:p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-3">
                     <div>
-                        <h2 class="text-base sm:text-lg font-semibold text-gray-800">👥 Master Worker Directory (Synced)</h2>
-                        <p class="text-xs text-gray-500">Manage worker profiles and print single or bulk barcode badges (6×4 cm).</p>
+                        <h2 class="text-base sm:text-lg font-semibold text-gray-800">👥 Master Worker Directory & Badges</h2>
+                        <p class="text-xs text-gray-500">Manage registered workers and print exact 6cm x 4cm barcode badges.</p>
                     </div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <button onclick="printSelectedBadges()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1">
-                            🖨️ Print Selected Badges (<span id="selectedCount">0</span>)
+                    <div class="flex gap-2">
+                        <button onclick="printBulkBadges()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow-sm">
+                            🖨️ Print All Badges (6×4 cm)
                         </button>
-                        <span id="directoryTotalBadge" class="bg-blue-100 text-blue-800 text-xs px-3 py-1.5 rounded-full font-semibold">Total: 0 Workers</span>
                     </div>
                 </div>
 
-                <!-- Directory Search & Filters Strip -->
-                <div class="p-3 sm:p-4 bg-slate-50 border-b border-gray-200 grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                    <div>
-                        <label class="block text-gray-500 mb-1 font-medium">Search Worker</label>
-                        <input type="text" id="directorySearchQuery" oninput="renderDirectoryTable()" placeholder="Name or ID..." class="w-full border rounded px-3 py-2 bg-white">
-                    </div>
-                    <div>
-                        <label class="block text-gray-500 mb-1 font-medium">Filter Category</label>
-                        <select id="directoryFilterType" onchange="renderDirectoryTable()" class="w-full border rounded px-3 py-2 bg-white">
-                            <option value="ALL">All Categories</option>
-                            <option value="Regular">Regular Employees</option>
-                            <option value="Contractor">Contractors Only</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-gray-500 mb-1 font-medium">Filter Department</label>
-                        <select id="directoryFilterDept" onchange="renderDirectoryTable()" class="w-full border rounded px-3 py-2 bg-white">
-                            <option value="ALL">All Departments</option>
-                        </select>
-                    </div>
+                <!-- Directory Search/Filter Bar -->
+                <div class="p-3 sm:p-4 bg-slate-50 border-b border-gray-200 flex flex-wrap gap-3 text-xs">
+                    <input type="text" id="dirSearchInput" oninput="renderDirectoryTable()" placeholder="Filter worker name, barcode ID..." class="border rounded-lg p-2 flex-1 min-w-[200px]">
+                    <select id="dirTypeFilter" onchange="renderDirectoryTable()" class="border rounded-lg p-2 bg-white">
+                        <option value="ALL">All Types</option>
+                        <option value="Regular">Regular Only</option>
+                        <option value="Contractor">Contractor Only</option>
+                    </select>
                 </div>
 
-                <!-- Directory Desktop Table View -->
-                <div class="hidden sm:block overflow-x-auto">
+                <!-- Directory Table -->
+                <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm">
                         <thead class="bg-gray-100 text-gray-600 uppercase text-[11px] tracking-wider border-b">
                             <tr>
-                                <th class="py-3 px-4 w-10">
-                                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAllWorkers(this)">
-                                </th>
-                                <th class="py-3 px-4">Worker ID</th>
-                                <th class="py-3 px-4">Full Name</th>
-                                <th class="py-3 px-4">Category</th>
-                                <th class="py-3 px-4">Contractor Company</th>
+                                <th class="py-3 px-4">Barcode ID</th>
+                                <th class="py-3 px-4">Worker Name</th>
                                 <th class="py-3 px-4">Department</th>
-                                <th class="py-3 px-4 text-right">Actions</th>
+                                <th class="py-3 px-4">Worker Type</th>
+                                <th class="py-3 px-4">Agency / Company</th>
+                                <th class="py-3 px-4 text-center">Barcode Preview</th>
+                                <th class="py-3 px-4 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody id="directoryTableBody" class="divide-y divide-gray-200 text-xs">
@@ -547,671 +532,671 @@
                         </tbody>
                     </table>
                 </div>
-
-                <!-- Directory Mobile Card List View -->
-                <div id="directoryMobileList" class="block sm:hidden divide-y divide-gray-200">
-                    <!-- Dynamic Mobile Directory Cards -->
-                </div>
-
             </div>
+
         </div>
 
     </main>
 
-    <!-- Password Verification Modal for Clear Log Operations -->
-    <div id="clearAuthModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
-        <div class="bg-white rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl border border-gray-200">
-            <h3 class="text-base font-bold text-gray-800 mb-2">🔐 Security Authentication Required</h3>
-            <p class="text-xs text-gray-500 mb-4" id="clearAuthPromptText">Please enter the administrator clearance password to proceed.</p>
-            <input type="password" id="clearAuthPassword" placeholder="Enter admin password..." class="w-full border rounded-lg p-2.5 text-sm mb-4 focus:ring-2 focus:ring-blue-500 outline-none">
-            <div class="flex gap-2 justify-end">
-                <button onclick="closeClearAuthModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition">Cancel</button>
-                <button onclick="executeConfirmedClear()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition">Authenticate & Clear</button>
-            </div>
-        </div>
-    </div>
+    <!-- JavaScript Application Logic -->
+    <script>
+        // --- Web Audio API Scan Beep Synthesizer ---
+        let audioCtx = null;
 
-    <!-- Firebase v11 Module Script -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import {
-            getAuth,
-            signInAnonymously,
-            signInWithCustomToken,
-            onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { 
-            getFirestore, 
-            collection, 
-            doc, 
-            setDoc, 
-            deleteDoc, 
-            onSnapshot 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    audioCtx = new AudioContextClass();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(() => {});
+            }
+            return audioCtx;
+        }
 
-        // Global environment variables or fallback defaults
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'worker-attendance-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : {
-                apiKey: "AIzaSyCMXQY6Y1VWNQUnH-utEdpAxk0qxSqtdvw",
-                authDomain: "attendance-afd2a.firebaseapp.com",
-                projectId: "attendance-afd2a",
-                storageBucket: "attendance-afd2a.firebasestorage.app",
-                messagingSenderId: "546193787959",
-                appId: "1:546193787959:web:736a11b4ee2b5d67a9c3b2"
-            };
+        function playScanBeep() {
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+                
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, ctx.currentTime); // Crisp 880Hz scan tone
 
-        // Application State
-        let workers = {};
-        let attendanceLogs = [];
-        let selectedWorkerIds = new Set();
-        let html5QrcodeScanner = null;
-        let activeBadgeWorker = null;
-        let currentUser = null;
-        let loggedInAppUser = null; // System User Profile
-        let activeModifyingLogIndex = null;
-        let workersUnsub = null;
-        let logsUnsub = null;
-        let workersSnapshotReady = false;
-        let logsSnapshotReady = false;
-        let pendingClearAction = null; // 'today', 'all', or 'single'
-        let targetSingleLogDocKey = null; // Stores document key for individual log deletion
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12); // Smooth 120ms decay
 
-        const SCAN_COOLDOWN_MS = 5 * 60 * 1000;
-        const ADMIN_CLEAR_PASSWORD = "admin123"; // Password for clearing logs
+                osc.connect(gain);
+                gain.connect(ctx.destination);
 
-        // User Accounts Database
-        const APP_USERS = {
-            'admin': { password: 'admin123', role: 'Admin', displayName: 'Administrator' },
-            'supervisor': { password: 'super123', role: 'Supervisor', displayName: 'Shift Supervisor' }
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.12);
+            } catch (e) {
+                console.warn('Audio feedback unavailable:', e);
+            }
+        }
+
+        // --- Application State ---
+        let workersDirectory = {}; // { workerId: { id, name, dept, type, agency } }
+        let attendanceLogs = [];   // [{ id, workerId, name, dept, type, agency, date, inTime, outTime, totalHours, otHours, loggedBy, status }]
+        
+        let currentUser = {
+            username: 'admin',
+            name: 'Admin User',
+            role: 'Admin'
         };
 
-        function getSavedCustomUsers() {
-            try {
-                const saved = localStorage.getItem('attendance_app_custom_users');
-                return saved ? JSON.parse(saved) : {};
-            } catch (e) {
-                return {};
-            }
-        }
+        let registeredUsers = [
+            { username: 'admin', password: 'admin123', name: 'System Admin', role: 'Admin' },
+            { username: 'supervisor', password: 'super123', name: 'Site Supervisor', role: 'Supervisor' }
+        ];
 
-        function getActiveUserTag() {
-            if (loggedInAppUser) {
-                return `${loggedInAppUser.displayName || loggedInAppUser.username} (${loggedInAppUser.role})`;
-            }
-            return 'System / Auto Scanner';
-        }
+        let html5QrcodeScanner = null;
+        let isScannerRunning = false;
+        let selectedWorkerForMod = null;
 
-        function getAllUsers() {
-            return { ...APP_USERS, ...getSavedCustomUsers() };
-        }
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            loadLocalStorageData();
+            initLiveClock();
+            updateSyncStatus('connected', 'Live Storage Ready');
+            updateUserUI();
+            
+            // Set current date display
+            const todayStr = getTodayDateString();
+            document.getElementById('currentDateDisplay').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('historyFilterDate').value = todayStr;
 
-        function getLocalDateString(date = new Date()) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
+            // Barcode Input Event Listener
+            const barcodeInput = document.getElementById('barcodeInput');
+            barcodeInput.addEventListener('keypress', (e) => {
+                getAudioContext(); // Resume context on user interaction
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const code = barcodeInput.value.trim();
+                    if (code) {
+                        processBarcodeScan(code);
+                        barcodeInput.value = '';
+                    }
+                }
+            });
+
+            // Initial Renders
+            renderDailyTable();
+            renderHistoryTable();
+            renderDirectoryTable();
+        });
+
+        // --- Date & Time Helpers ---
+        function getTodayDateString() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         }
 
-        function getWorkersCollectionRef() {
-            return collection(db, 'artifacts', appId, 'public', 'data', 'workers');
+        function getCurrentTimeString() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            return `${hours}:${minutes}`;
         }
 
-        function getLogsCollectionRef() {
-            return collection(db, 'artifacts', appId, 'public', 'data', 'attendance_logs');
+        function initLiveClock() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('liveClock').textContent = now.toLocaleTimeString();
+            }, 1000);
         }
 
-        async function initAuth() {
-            updateSyncStatus('Authenticating...', 'amber');
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (err) {
-                console.error("Auth error:", err);
-                updateSyncStatus('Auth Failed', 'red');
-            }
+        // --- Storage Management ---
+        function loadLocalStorageData() {
+            const savedWorkers = localStorage.getItem('wt_workers_dir');
+            if (savedWorkers) workersDirectory = JSON.parse(savedWorkers);
+
+            const savedLogs = localStorage.getItem('wt_attendance_logs');
+            if (savedLogs) attendanceLogs = JSON.parse(savedLogs);
+
+            const savedUsers = localStorage.getItem('wt_registered_users');
+            if (savedUsers) registeredUsers = JSON.parse(savedUsers);
+
+            const activeUser = localStorage.getItem('wt_active_user');
+            if (activeUser) currentUser = JSON.parse(activeUser);
         }
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                updateSyncStatus('Syncing data...', 'amber');
-                setupFirestoreListeners();
+        function saveToLocalStorage() {
+            localStorage.setItem('wt_workers_dir', JSON.stringify(workersDirectory));
+            localStorage.setItem('wt_attendance_logs', JSON.stringify(attendanceLogs));
+            localStorage.setItem('wt_registered_users', JSON.stringify(registeredUsers));
+            if (currentUser) {
+                localStorage.setItem('wt_active_user', JSON.stringify(currentUser));
             } else {
-                currentUser = null;
-                updateSyncStatus('Disconnected', 'red');
+                localStorage.removeItem('wt_active_user');
             }
-        });
+        }
 
-        function updateSyncStatus(text, color) {
+        function updateSyncStatus(state, text) {
             const dot = document.getElementById('syncStatusDot');
             const txt = document.getElementById('syncStatusText');
-            txt.innerText = text;
-            
-            if (color === 'emerald') {
-                dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
-            } else if (color === 'amber') {
+            txt.textContent = text;
+            if (state === 'connected') {
+                dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+            } else if (state === 'syncing') {
                 dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
             } else {
-                dot.className = "w-2 h-2 rounded-full bg-red-500";
+                dot.className = "w-2 h-2 rounded-full bg-red-400";
             }
         }
 
-        function setupFirestoreListeners() {
-            if (!currentUser) return;
+        // --- Navigation ---
+        function switchTab(tab) {
+            document.getElementById('tabDailyView').classList.add('hidden');
+            document.getElementById('tabHistoryView').classList.add('hidden');
+            document.getElementById('tabDirectoryView').classList.add('hidden');
 
-            if (workersUnsub) workersUnsub();
-            if (logsUnsub) logsUnsub();
+            document.getElementById('tabBtnDaily').className = "px-3 py-1.5 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition";
+            document.getElementById('tabBtnHistory').className = "px-3 py-1.5 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition";
+            document.getElementById('tabBtnDirectory').className = "px-3 py-1.5 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition";
 
-            workersUnsub = onSnapshot(getWorkersCollectionRef(), (snapshot) => {
-                workersSnapshotReady = true;
-                if (workersSnapshotReady && logsSnapshotReady) updateSyncStatus('Live Synced', 'emerald');
-                const newWorkers = {};
-                snapshot.forEach(docSnap => {
-                    newWorkers[docSnap.id] = docSnap.data();
-                });
-                
-                if (snapshot.empty && Object.keys(workers).length === 0) {
-                    seedInitialData();
-                } else {
-                    workers = newWorkers;
-                    populateDepartmentDropdowns();
-                    renderDirectoryTable();
-                    renderDailyTable();
-                    renderHistoryTable();
-                }
-            }, (error) => {
-                console.error("Workers Snapshot Error:", error);
-                updateSyncStatus('Sync Error', 'red');
-                showAlert("Cloud Sync Error (Workers): " + error.message, "bg-red-100 border-red-400 text-red-800");
-            });
-
-            logsUnsub = onSnapshot(getLogsCollectionRef(), (snapshot) => {
-                logsSnapshotReady = true;
-                if (workersSnapshotReady && logsSnapshotReady) updateSyncStatus('Live Synced', 'emerald');
-                const newLogs = [];
-                snapshot.forEach(docSnap => {
-                    newLogs.push({ docId: docSnap.id, ...docSnap.data() });
-                });
-                
-                attendanceLogs = newLogs.sort((a, b) => {
-                    if (a.date !== b.date) return a.date.localeCompare(b.date);
-                    return (a.inTime || '').localeCompare(b.inTime || '');
-                });
-
+            if (tab === 'daily') {
+                document.getElementById('tabDailyView').classList.remove('hidden');
+                document.getElementById('tabBtnDaily').className = "px-3 py-1.5 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition";
                 renderDailyTable();
+            } else if (tab === 'history') {
+                document.getElementById('tabHistoryView').classList.remove('hidden');
+                document.getElementById('tabBtnHistory').className = "px-3 py-1.5 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition";
+                populateDeptFilterDropdown();
                 renderHistoryTable();
-            }, (error) => {
-                console.error("Logs Snapshot Error:", error);
-                updateSyncStatus('Sync Error', 'red');
-                showAlert("Cloud Sync Error (Logs): " + error.message, "bg-red-100 border-red-400 text-red-800");
-            });
-        }
-
-        async function seedInitialData() {
-            const initialWorkers = {
-                "W101": { name: "Rajesh Kumar", dept: "Assembly", type: "Regular", agency: "-" },
-                "W102": { name: "Amit Sharma", dept: "Quality", type: "Regular", agency: "-" },
-                "W103": { name: "Suresh Patil", dept: "Packaging", type: "Contractor", agency: "Apex Manpower" }
-            };
-            
-            for (const [id, data] of Object.entries(initialWorkers)) {
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'workers', id), data);
+            } else if (tab === 'directory') {
+                document.getElementById('tabDirectoryView').classList.remove('hidden');
+                document.getElementById('tabBtnDirectory').className = "px-3 py-1.5 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition";
+                renderDirectoryTable();
             }
         }
 
-        // --- AUTH & USER MODAL FUNCTIONS ---
-        function openLoginModal() {
-            const errLog = document.getElementById('loginErrorMsg');
-            const errReg = document.getElementById('regErrorMsg');
-            if (errLog) errLog.classList.add('hidden');
-            if (errReg) errReg.classList.add('hidden');
-            switchAuthMode('login');
-            document.getElementById('loginModal').classList.remove('hidden');
-        }
+        // --- Core Punch / Barcode Logic ---
+        function processBarcodeScan(barcodeId) {
+            playScanBeep(); // Trigger audio confirmation on mobile/desktop
+            const cleanId = barcodeId.trim();
+            if (!cleanId) return;
 
-        function openCreateUserModal() {
-            if (!loggedInAppUser || loggedInAppUser.role !== 'Admin') {
-                showAlert("Access Denied: Only Admin users can create accounts.", "bg-red-100 border-red-400 text-red-800");
-                return;
-            }
-            const errLog = document.getElementById('loginErrorMsg');
-            const errReg = document.getElementById('regErrorMsg');
-            if (errLog) errLog.classList.add('hidden');
-            if (errReg) errReg.classList.add('hidden');
-            switchAuthMode('register');
-            document.getElementById('loginModal').classList.remove('hidden');
-        }
-
-        function closeLoginModal() {
-            document.getElementById('loginModal').classList.add('hidden');
-        }
-
-        function fillPresetCredentials(user, pass) {
-            document.getElementById('loginUsername').value = user;
-            document.getElementById('loginPassword').value = pass;
-        }
-
-        function switchAuthMode(mode) {
-            const loginForm = document.getElementById('authLoginForm');
-            const regForm = document.getElementById('authRegisterForm');
-            const tabLogin = document.getElementById('authTabLogin');
-            const tabReg = document.getElementById('authTabRegister');
-
-            if (mode === 'login') {
-                loginForm.classList.remove('hidden');
-                regForm.classList.add('hidden');
-                tabLogin.className = "flex-1 py-2.5 text-center font-bold text-sm text-blue-600 border-b-2 border-blue-600";
-                tabReg.className = "flex-1 py-2.5 text-center font-semibold text-sm text-gray-500 border-b-2 border-transparent hover:text-gray-700";
-            } else {
-                loginForm.classList.add('hidden');
-                regForm.classList.remove('hidden');
-                tabReg.className = "flex-1 py-2.5 text-center font-bold text-sm text-blue-600 border-b-2 border-blue-600";
-                tabLogin.className = "flex-1 py-2.5 text-center font-semibold text-sm text-gray-500 border-b-2 border-transparent hover:text-gray-700";
-            }
-        }
-
-        function handleUserLogin() {
-            const userIn = document.getElementById('loginUsername').value.trim().toLowerCase();
-            const passIn = document.getElementById('loginPassword').value;
-            const errBox = document.getElementById('loginErrorMsg');
-
-            if (!userIn || !passIn) {
-                errBox.innerText = "Please enter both username and password.";
-                errBox.classList.remove('hidden');
-                return;
-            }
-
-            const allUsers = getAllUsers();
-            const account = allUsers[userIn];
-
-            if (account && account.password === passIn) {
-                loggedInAppUser = {
-                    username: userIn,
-                    role: account.role,
-                    displayName: account.displayName
+            let worker = workersDirectory[cleanId];
+            if (!worker) {
+                // Auto-register unknown worker or trigger alert
+                worker = {
+                    id: cleanId,
+                    name: `Worker ${cleanId}`,
+                    dept: 'General',
+                    type: 'Regular',
+                    agency: ''
                 };
+                workersDirectory[cleanId] = worker;
+                saveToLocalStorage();
+                renderDirectoryTable();
+            }
 
-                try {
-                    sessionStorage.setItem('attendance_logged_user', JSON.stringify(loggedInAppUser));
-                } catch(e) {}
+            const todayStr = getTodayDateString();
+            const currentTime = getCurrentTimeString();
 
-                updateAuthHeaderUI();
-                closeLoginModal();
-                showAlert(`👋 Welcome ${account.displayName}! Logged in as ${account.role}.`, "bg-emerald-100 border-emerald-400 text-emerald-800");
-                renderDailyTable();
-                renderHistoryTable();
+            // Check existing punch for today
+            let logIndex = attendanceLogs.findIndex(l => l.workerId === cleanId && l.date === todayStr);
+
+            if (logIndex === -1) {
+                // IN Punch
+                const newLog = {
+                    id: 'log_' + Date.now(),
+                    workerId: worker.id,
+                    name: worker.name,
+                    dept: worker.dept || 'General',
+                    type: worker.type || 'Regular',
+                    agency: worker.agency || '',
+                    date: todayStr,
+                    inTime: currentTime,
+                    outTime: '',
+                    totalHours: '0.00',
+                    otHours: '0.00',
+                    loggedBy: currentUser ? currentUser.name : 'System',
+                    status: 'IN'
+                };
+                attendanceLogs.unshift(newLog);
+                showAlert(`✅ IN Punch logged for ${worker.name} at ${currentTime}`, 'success');
             } else {
-                errBox.innerText = "Invalid username or password!";
-                errBox.classList.remove('hidden');
-            }
-        }
-
-        function handleUserRegistration() {
-            const name = document.getElementById('regDisplayName').value.trim();
-            const user = document.getElementById('regUsername').value.trim().toLowerCase();
-            const pass = document.getElementById('regPassword').value;
-            const role = document.getElementById('regUserRole').value;
-            const errBox = document.getElementById('regErrorMsg');
-
-            // --- ADMIN RESTRICTION CHECK ---
-            if (!loggedInAppUser || loggedInAppUser.role !== 'Admin') {
-                errBox.innerText = "Access Denied: Only logged-in Admin accounts are authorized to create new user accounts. Please log in as Admin first.";
-                errBox.classList.remove('hidden');
-                return;
-            }
-
-            if (!name || !user || !pass) {
-                errBox.innerText = "Please complete all fields to register.";
-                errBox.classList.remove('hidden');
-                return;
-            }
-
-            const allUsers = getAllUsers();
-            if (allUsers[user]) {
-                errBox.innerText = "Username already exists! Please choose a different username.";
-                errBox.classList.remove('hidden');
-                return;
-            }
-
-            const customUsers = getSavedCustomUsers();
-            customUsers[user] = { password: pass, role: role, displayName: name };
-
-            try {
-                localStorage.setItem('attendance_app_custom_users', JSON.stringify(customUsers));
-            } catch(e) {
-                console.error("Local storage error:", e);
-            }
-
-            closeLoginModal();
-            showAlert(`🎉 New account (${name} - ${role}) created successfully by ${loggedInAppUser.displayName}!`, "bg-emerald-100 border-emerald-400 text-emerald-800");
-            renderDailyTable();
-            renderHistoryTable();
-        }
-
-        function updateAuthHeaderUI() {
-            const userInfo = document.getElementById('userInfoDisplay');
-            const loginBtn = document.getElementById('loginHeaderBtn');
-            const createUserBtn = document.getElementById('createUserHeaderBtn');
-            const logoutBtn = document.getElementById('logoutHeaderBtn');
-            const roleBadge = document.getElementById('userRoleBadge');
-            const nameDisplay = document.getElementById('userNameDisplay');
-            const authTabReg = document.getElementById('authTabRegister');
-
-            if (loggedInAppUser) {
-                if (userInfo) userInfo.classList.remove('hidden');
-                if (loginBtn) loginBtn.classList.add('hidden');
-                if (logoutBtn) logoutBtn.classList.remove('hidden');
-                if (roleBadge) roleBadge.innerText = loggedInAppUser.role;
-                if (nameDisplay) nameDisplay.innerText = loggedInAppUser.displayName || loggedInAppUser.username;
-
-                // Show Create User button only for Admins
-                if (loggedInAppUser.role === 'Admin') {
-                    if (createUserBtn) createUserBtn.classList.remove('hidden');
-                    if (authTabReg) authTabReg.classList.remove('hidden');
+                // OUT Punch or Update
+                let log = attendanceLogs[logIndex];
+                if (!log.outTime) {
+                    log.outTime = currentTime;
+                    log.status = 'OUT';
+                    calculateLogHours(log);
+                    showAlert(`🚪 OUT Punch logged for ${worker.name} at ${currentTime} (Hrs: ${log.totalHours}, OT: ${log.otHours})`, 'purple');
                 } else {
-                    if (createUserBtn) createUserBtn.classList.add('hidden');
-                    if (authTabReg) authTabReg.classList.add('hidden');
+                    // Update Out Time again
+                    log.outTime = currentTime;
+                    calculateLogHours(log);
+                    showAlert(`🔄 OUT Time updated for ${worker.name} to ${currentTime}`, 'info');
                 }
-            } else {
-                if (userInfo) userInfo.classList.add('hidden');
-                if (loginBtn) loginBtn.classList.remove('hidden');
-                if (logoutBtn) logoutBtn.classList.add('hidden');
-                if (createUserBtn) createUserBtn.classList.add('hidden');
-                if (authTabReg) authTabReg.classList.add('hidden');
+            }
+
+            saveToLocalStorage();
+            renderDailyTable();
+            if (!document.getElementById('tabHistoryView').classList.contains('hidden')) {
+                renderHistoryTable();
             }
         }
 
-        function handleLogout() {
-            loggedInAppUser = null;
-            try {
-                sessionStorage.removeItem('attendance_logged_user');
-            } catch(e) {}
-            updateAuthHeaderUI();
-            showAlert("Logged out successfully.", "bg-gray-100 border-gray-400 text-gray-800");
+        function calculateLogHours(log) {
+            if (!log.inTime || !log.outTime) {
+                log.totalHours = '0.00';
+                log.otHours = '0.00';
+                return;
+            }
+
+            const inParts = log.inTime.split(':').map(Number);
+            const outParts = log.outTime.split(':').map(Number);
+
+            let inMinutes = inParts[0] * 60 + inParts[1];
+            let outMinutes = outParts[0] * 60 + outParts[1];
+
+            if (outMinutes < inMinutes) {
+                outMinutes += 24 * 60; // Overnight shift
+            }
+
+            const diffMinutes = outMinutes - inMinutes;
+            const totalHrs = diffMinutes / 60;
+            log.totalHours = totalHrs.toFixed(2);
+
+            const shiftRuleHrs = parseFloat(document.getElementById('shiftHours').value) || 8;
+            
+            // OT applies if work time exceeds shift by 30 mins (>= shift + 0.5)
+            if (totalHrs >= (shiftRuleHrs + 0.5)) {
+                log.otHours = (totalHrs - shiftRuleHrs).toFixed(2);
+            } else {
+                log.otHours = '0.00';
+            }
+        }
+
+        function recalculateAllOT() {
+            attendanceLogs.forEach(calculateLogHours);
+            saveToLocalStorage();
             renderDailyTable();
             renderHistoryTable();
         }
 
-        // --- MODIFY OUT TIME MODAL FUNCTIONS ---
-        function openModifyOutTimeModal(globalIndex) {
-            const record = attendanceLogs[globalIndex];
-            if (!record) return;
-
-            activeModifyingLogIndex = globalIndex;
-
-            document.getElementById('modOutWorkerName').innerText = `${record.name} (${record.id})`;
-            document.getElementById('modOutInTime').innerText = record.inTime || '--:--';
-            document.getElementById('modOutCurrentTime').innerText = record.outTime || 'None (Punched IN)';
-
-            const timeInput = document.getElementById('newOutTimeInput');
-            if (record.outTime) {
-                // Ensure HH:MM format for HTML time picker
-                const parts = record.outTime.split(':');
-                timeInput.value = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+        function showAlert(msg, type) {
+            const alertEl = document.getElementById('scanAlert');
+            alertEl.classList.remove('hidden', 'bg-emerald-100', 'text-emerald-800', 'border-emerald-300', 'bg-purple-100', 'text-purple-800', 'border-purple-300', 'bg-blue-100', 'text-blue-800', 'border-blue-300');
+            
+            if (type === 'success') {
+                alertEl.classList.add('bg-emerald-100', 'text-emerald-800', 'border-emerald-300');
+            } else if (type === 'purple') {
+                alertEl.classList.add('bg-purple-100', 'text-purple-800', 'border-purple-300');
             } else {
-                const now = new Date();
-                timeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                alertEl.classList.add('bg-blue-100', 'text-blue-800', 'border-blue-300');
             }
+
+            alertEl.innerHTML = msg;
+            setTimeout(() => {
+                alertEl.classList.add('hidden');
+            }, 4000);
+        }
+
+        // --- Render Today's Logs Table ---
+        function renderDailyTable() {
+            const todayStr = getTodayDateString();
+            const filterType = document.getElementById('dailyFilterType').value;
+            
+            const todayLogs = attendanceLogs.filter(l => l.date === todayStr && (filterType === 'ALL' || l.type === filterType));
+
+            const tbody = document.getElementById('dailyTableBody');
+            const mobileList = document.getElementById('dailyMobileList');
+            tbody.innerHTML = '';
+            mobileList.innerHTML = '';
+
+            let presentCount = 0;
+            let contractorCount = 0;
+            let completedCount = 0;
+            let totalOT = 0;
+
+            todayLogs.forEach(log => {
+                presentCount++;
+                if (log.type === 'Contractor') contractorCount++;
+                if (log.status === 'OUT') completedCount++;
+                totalOT += parseFloat(log.otHours || 0);
+
+                // Desktop Row
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                tr.innerHTML = `
+                    <td class="py-2 px-3 font-bold text-gray-700">${log.workerId}</td>
+                    <td class="py-2 px-3 font-semibold text-blue-900">${log.name}</td>
+                    <td class="py-2 px-3">
+                        <span class="px-1.5 py-0.5 text-[10px] rounded font-semibold ${log.type === 'Contractor' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}">
+                            ${log.type}${log.agency ? ' (' + log.agency + ')' : ''}
+                        </span>
+                    </td>
+                    <td class="py-2 px-3 text-emerald-700 font-bold">${log.inTime}</td>
+                    <td class="py-2 px-3 text-purple-700 font-bold">${log.outTime || '--:--'}</td>
+                    <td class="py-2 px-3">${log.totalHours}h</td>
+                    <td class="py-2 px-3 font-bold ${parseFloat(log.otHours) > 0 ? 'text-purple-600' : 'text-gray-400'}">${log.otHours}h</td>
+                    <td class="py-2 px-3 text-gray-500">${log.loggedBy}</td>
+                    <td class="py-2 px-3">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${log.status === 'IN' ? 'bg-emerald-500 text-white animate-pulse' : 'bg-gray-200 text-gray-700'}">
+                            ${log.status}
+                        </span>
+                    </td>
+                    <td class="py-2 px-3 text-right no-print">
+                        <button onclick="openModifyOutTimeModal('${log.id}')" class="bg-purple-100 hover:bg-purple-200 text-purple-800 px-2 py-0.5 rounded text-[10px] font-semibold transition">
+                            ✏️ Edit Out
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+
+                // Mobile Card
+                const card = document.createElement('div');
+                card.className = "p-3 bg-white space-y-1.5 text-xs";
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-blue-900">${log.name} (${log.workerId})</span>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${log.status === 'IN' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-700'}">${log.status}</span>
+                    </div>
+                    <div class="flex justify-between text-[11px] text-gray-600">
+                        <span>Type: <strong>${log.type}</strong></span>
+                        <span>In: <strong class="text-emerald-700">${log.inTime}</strong> | Out: <strong class="text-purple-700">${log.outTime || '--:--'}</strong></span>
+                    </div>
+                    <div class="flex justify-between items-center pt-1 border-t border-gray-100">
+                        <span class="font-mono text-[11px]">Hrs: <strong>${log.totalHours}h</strong> | OT: <strong class="text-purple-600">${log.otHours}h</strong></span>
+                        <button onclick="openModifyOutTimeModal('${log.id}')" class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-[10px] font-semibold">✏️ Edit Out</button>
+                    </div>
+                `;
+                mobileList.appendChild(card);
+            });
+
+            // Update Stats
+            document.getElementById('statPresent').textContent = presentCount;
+            document.getElementById('statContractors').textContent = contractorCount;
+            document.getElementById('statCompleted').textContent = completedCount;
+            document.getElementById('statTotalOT').textContent = totalOT.toFixed(2);
+        }
+
+        // --- Render History Logs ---
+        function populateDeptFilterDropdown() {
+            const select = document.getElementById('historyFilterDept');
+            const currentVal = select.value;
+            select.innerHTML = '<option value="ALL">All Departments</option>';
+
+            const depts = new Set();
+            attendanceLogs.forEach(l => { if (l.dept) depts.add(l.dept); });
+            
+            depts.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d;
+                opt.textContent = d;
+                select.appendChild(opt);
+            });
+            select.value = currentVal;
+        }
+
+        function renderHistoryTable() {
+            const filterDate = document.getElementById('historyFilterDate').value;
+            const searchQuery = document.getElementById('historySearchQuery').value.toLowerCase().trim();
+            const filterType = document.getElementById('historyFilterType').value;
+            const filterDept = document.getElementById('historyFilterDept').value;
+
+            const filteredLogs = attendanceLogs.filter(log => {
+                if (filterDate && log.date !== filterDate) return false;
+                if (filterType !== 'ALL' && log.type !== filterType) return false;
+                if (filterDept !== 'ALL' && log.dept !== filterDept) return false;
+                if (searchQuery) {
+                    const matchName = log.name.toLowerCase().includes(searchQuery);
+                    const matchId = log.workerId.toLowerCase().includes(searchQuery);
+                    if (!matchName && !matchId) return false;
+                }
+                return true;
+            });
+
+            const tbody = document.getElementById('historyTableBody');
+            const mobileList = document.getElementById('historyMobileList');
+            tbody.innerHTML = '';
+            mobileList.innerHTML = '';
+
+            filteredLogs.forEach(log => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                tr.innerHTML = `
+                    <td class="py-2.5 px-4 font-semibold text-gray-600">${log.date}</td>
+                    <td class="py-2.5 px-4 font-bold text-gray-800">${log.workerId}</td>
+                    <td class="py-2.5 px-4 font-semibold text-blue-900">${log.name}</td>
+                    <td class="py-2.5 px-4">${log.type}${log.agency ? ' (' + log.agency + ')' : ''}</td>
+                    <td class="py-2.5 px-4 text-emerald-700 font-bold">${log.inTime}</td>
+                    <td class="py-2.5 px-4 text-purple-700 font-bold">${log.outTime || '--:--'}</td>
+                    <td class="py-2.5 px-4">${log.totalHours}h</td>
+                    <td class="py-2.5 px-4 font-bold text-purple-600">${log.otHours}h</td>
+                    <td class="py-2.5 px-4 text-gray-500">${log.loggedBy}</td>
+                    <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${log.status === 'IN' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-700'}">${log.status}</span></td>
+                    <td class="py-2.5 px-4 text-right">
+                        <button onclick="openModifyOutTimeModal('${log.id}')" class="text-purple-600 hover:underline font-semibold text-xs">Edit</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+
+                const card = document.createElement('div');
+                card.className = "p-3 bg-white space-y-1 text-xs border-b";
+                card.innerHTML = `
+                    <div class="flex justify-between font-bold">
+                        <span>${log.name} (${log.workerId})</span>
+                        <span class="text-gray-500">${log.date}</span>
+                    </div>
+                    <div class="flex justify-between text-gray-600">
+                        <span>In: <strong class="text-emerald-700">${log.inTime}</strong> | Out: <strong class="text-purple-700">${log.outTime || '--:--'}</strong></span>
+                        <span>Hrs: <strong>${log.totalHours}h</strong> (OT: ${log.otHours}h)</span>
+                    </div>
+                `;
+                mobileList.appendChild(card);
+            });
+        }
+
+        // --- Render Directory Table ---
+        function renderDirectoryTable() {
+            const query = document.getElementById('dirSearchInput').value.toLowerCase().trim();
+            const typeFilter = document.getElementById('dirTypeFilter').value;
+
+            const tbody = document.getElementById('directoryTableBody');
+            tbody.innerHTML = '';
+
+            Object.values(workersDirectory).forEach(worker => {
+                if (typeFilter !== 'ALL' && worker.type !== typeFilter) return;
+                if (query) {
+                    const matchName = worker.name.toLowerCase().includes(query);
+                    const matchId = worker.id.toLowerCase().includes(query);
+                    if (!matchName && !matchId) return;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                
+                const svgId = `dir_barcode_${worker.id}`;
+
+                tr.innerHTML = `
+                    <td class="py-2.5 px-4 font-mono font-bold text-gray-800">${worker.id}</td>
+                    <td class="py-2.5 px-4 font-semibold text-blue-900">${worker.name}</td>
+                    <td class="py-2.5 px-4">${worker.dept || 'General'}</td>
+                    <td class="py-2.5 px-4">${worker.type}</td>
+                    <td class="py-2.5 px-4 text-gray-500">${worker.agency || '-'}</td>
+                    <td class="py-2 px-4 text-center">
+                        <svg id="${svgId}" class="mx-auto block"></svg>
+                    </td>
+                    <td class="py-2.5 px-4 text-right">
+                        <button onclick="printSingleBadgeFromDir('${worker.id}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded text-xs font-medium transition">
+                            🖨️ Badge
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+
+                // Render Barcode
+                setTimeout(() => {
+                    try {
+                        JsBarcode(`#${svgId}`, worker.id, {
+                            format: "CODE128",
+                            width: 1.2,
+                            height: 30,
+                            displayValue: false,
+                            margin: 2
+                        });
+                    } catch (e) {}
+                }, 10);
+            });
+        }
+
+        // --- Modify Out Time Modal Logic ---
+        function openModifyOutTimeModal(logId) {
+            const log = attendanceLogs.find(l => l.id === logId);
+            if (!log) return;
+
+            selectedWorkerForMod = log;
+            document.getElementById('modOutWorkerName').textContent = `${log.name} (ID: ${log.workerId})`;
+            document.getElementById('modOutInTime').textContent = log.inTime;
+            document.getElementById('modOutCurrentTime').textContent = log.outTime || 'NOT SET (IN Status)';
+            document.getElementById('newOutTimeInput').value = log.outTime || getCurrentTimeString();
 
             document.getElementById('modifyOutTimeModal').classList.remove('hidden');
         }
 
         function closeModifyOutTimeModal() {
             document.getElementById('modifyOutTimeModal').classList.add('hidden');
-            activeModifyingLogIndex = null;
+            selectedWorkerForMod = null;
         }
 
         function setCurrentOutTimeInModal() {
-            const now = new Date();
-            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-            document.getElementById('newOutTimeInput').value = timeStr.substring(0, 5);
+            document.getElementById('newOutTimeInput').value = getCurrentTimeString();
         }
 
         function clearOutTimeInModal() {
-            document.getElementById('newOutTimeInput').value = '';
+            if (!selectedWorkerForMod) return;
+            selectedWorkerForMod.outTime = '';
+            selectedWorkerForMod.status = 'IN';
+            calculateLogHours(selectedWorkerForMod);
+            saveToLocalStorage();
+            renderDailyTable();
+            renderHistoryTable();
+            closeModifyOutTimeModal();
         }
 
-        async function saveModifiedOutTime() {
-            if (activeModifyingLogIndex === null || !currentUser) return;
+        function saveModifiedOutTime() {
+            if (!selectedWorkerForMod) return;
+            const newTime = document.getElementById('newOutTimeInput').value;
+            if (!newTime) return;
 
-            const record = attendanceLogs[activeModifyingLogIndex];
-            if (!record) return;
-
-            const val = document.getElementById('newOutTimeInput').value.trim();
-            const userTag = getActiveUserTag();
-
-            if (!val) {
-                record.outTime = null;
-                record.status = 'IN';
-                record.totalHours = '0.00';
-                record.otHours = '0.00';
-                record.modifiedBy = userTag;
-            } else {
-                let outTimeFormatted = val;
-                if (val.split(':').length === 2) {
-                    outTimeFormatted = `${val}:00`;
-                }
-
-                record.outTime = outTimeFormatted;
-                record.status = 'COMPLETED';
-                record.modifiedBy = userTag;
-                calculateOvertime(record);
-            }
-
-            const docKey = record.docId || `${record.date}_${record.id}`;
-
-            try {
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docKey), record);
-                closeModifyOutTimeModal();
-                showAlert(`🕒 Out Time updated by ${userTag} for ${record.name}`, "bg-purple-100 border-purple-400 text-purple-800");
-            } catch (err) {
-                showAlert("Failed to update Out Time: " + err.message, "bg-red-100 border-red-400 text-red-800");
-            }
+            selectedWorkerForMod.outTime = newTime;
+            selectedWorkerForMod.status = 'OUT';
+            calculateLogHours(selectedWorkerForMod);
+            saveToLocalStorage();
+            renderDailyTable();
+            renderHistoryTable();
+            closeModifyOutTimeModal();
         }
 
-        // Global Exposure
-        window.openLoginModal = openLoginModal;
-        window.openCreateUserModal = openCreateUserModal;
-        window.closeLoginModal = closeLoginModal;
-        window.handleUserLogin = handleUserLogin;
-        window.handleLogout = handleLogout;
-        window.fillPresetCredentials = fillPresetCredentials;
-        window.openModifyOutTimeModal = openModifyOutTimeModal;
-        window.closeModifyOutTimeModal = closeModifyOutTimeModal;
-        window.setCurrentOutTimeInModal = setCurrentOutTimeInModal;
-        window.clearOutTimeInModal = clearOutTimeInModal;
-        window.saveModifiedOutTime = saveModifiedOutTime;
-        window.switchAuthMode = switchAuthMode;
-        window.handleUserRegistration = handleUserRegistration;
-        window.switchTab = switchTab;
-        window.toggleContractorInput = toggleContractorInput;
-        window.registerWorker = registerWorker;
-        window.printSingleBadgeFromPreview = printSingleBadgeFromPreview;
-        window.reprintWorkerBadge = reprintWorkerBadge;
-        window.printSelectedBadges = printSelectedBadges;
-        window.toggleSelectAllWorkers = toggleSelectAllWorkers;
-        window.toggleWorkerSelect = toggleWorkerSelect;
-        window.importWorkersCSV = importWorkersCSV;
-        window.downloadCSVTemplate = downloadCSVTemplate;
-        window.deleteWorkerProfile = deleteWorkerProfile;
-        window.recalculateAllOT = recalculateAllOT;
-        window.editManualOT = editManualOT;
-        window.renderDailyTable = renderDailyTable;
-        window.renderHistoryTable = renderHistoryTable;
-        window.renderDirectoryTable = renderDirectoryTable;
-        window.toggleCameraScanner = toggleCameraScanner;
-        window.exportToCSV = exportToCSV;
-        window.promptClearTodayRecords = promptClearTodayRecords;
-        window.promptClearAllRecords = promptClearAllRecords;
-        window.promptDeleteSingleLog = promptDeleteSingleLog;
-        window.closeClearAuthModal = closeClearAuthModal;
-        window.executeConfirmedClear = executeConfirmedClear;
-
-        document.addEventListener("DOMContentLoaded", () => {
-            // Restore session user if present
-            try {
-                const savedUser = sessionStorage.getItem('attendance_logged_user');
-                if (savedUser) {
-                    loggedInAppUser = JSON.parse(savedUser);
-                }
-            } catch(e) {}
-            updateAuthHeaderUI();
-
-            document.getElementById('currentDateDisplay').innerText = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
-            updateClock();
-            setInterval(updateClock, 1000);
-            
-            const barcodeInput = document.getElementById('barcodeInput');
-            if (barcodeInput) barcodeInput.focus();
-
-            barcodeInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    const code = barcodeInput.value.trim();
-                    if (code) {
-                        handleBarcodeScan(code);
-                        barcodeInput.value = '';
-                    }
-                }
-            });
-
-            initAuth();
-        });
-
-        function updateClock() {
-            document.getElementById('liveClock').innerText = new Date().toLocaleTimeString('en-IN');
-        }
-
-        function switchTab(tab) {
-            document.getElementById('tabDailyView').classList.add('hidden');
-            document.getElementById('tabHistoryView').classList.add('hidden');
-            document.getElementById('tabDirectoryView').classList.add('hidden');
-
-            document.getElementById('tabBtnDaily').className = "px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition";
-            document.getElementById('tabBtnHistory').className = "px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition";
-            document.getElementById('tabBtnDirectory').className = "px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition";
-
-            if (tab === 'daily') {
-                document.getElementById('tabDailyView').classList.remove('hidden');
-                document.getElementById('tabBtnDaily').className = "px-3 py-2 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition";
-                renderDailyTable();
-            } else if (tab === 'history') {
-                document.getElementById('tabHistoryView').classList.remove('hidden');
-                document.getElementById('tabBtnHistory').className = "px-3 py-2 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition";
-                renderHistoryTable();
-            } else if (tab === 'directory') {
-                document.getElementById('tabDirectoryView').classList.remove('hidden');
-                document.getElementById('tabBtnDirectory').className = "px-3 py-2 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition";
-                renderDirectoryTable();
-            }
-        }
-
+        // --- Register Worker & Barcode Badges ---
         function toggleContractorInput() {
             const type = document.getElementById('newWorkerType').value;
-            const agencyGroup = document.getElementById('agencyInputGroup');
+            const group = document.getElementById('agencyInputGroup');
             if (type === 'Contractor') {
-                agencyGroup.classList.remove('hidden');
+                group.classList.remove('hidden');
             } else {
-                agencyGroup.classList.add('hidden');
+                group.classList.add('hidden');
             }
         }
 
-        async function registerWorker(e) {
+        function registerWorker(e) {
             e.preventDefault();
-            if (!currentUser) {
-                showAlert("Cannot register: Not connected to Firebase cloud", "bg-red-100 border-red-400 text-red-800");
-                return;
-            }
-
             const id = document.getElementById('newWorkerId').value.trim();
             const name = document.getElementById('newWorkerName').value.trim();
             const dept = document.getElementById('newWorkerDept').value.trim() || 'General';
             const type = document.getElementById('newWorkerType').value;
-            const agency = type === 'Contractor' ? (document.getElementById('newWorkerAgency').value.trim() || 'Independent') : '-';
+            const agency = document.getElementById('newWorkerAgency').value.trim();
 
             if (!id || !name) return;
 
-            const workerData = { name, dept, type, agency, updatedAt: Date.now() };
+            const worker = { id, name, dept, type, agency };
+            workersDirectory[id] = worker;
+            saveToLocalStorage();
 
-            try {
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'workers', id), workerData);
-
-                generateBarcodeBadge(id, name, dept, type, agency);
-
-                showAlert(`✅ Worker ${name} (${id}) synced to cloud!`, 'bg-green-100 border-green-400 text-green-700');
-                document.getElementById('addWorkerForm').reset();
-                document.getElementById('agencyInputGroup').classList.add('hidden');
-            } catch (err) {
-                console.error("Save worker error:", err);
-                showAlert("Failed to save worker: " + err.message, "bg-red-100 border-red-400 text-red-800");
-            }
-        }
-
-        function generateBarcodeBadge(id, name, dept, type, agency) {
-            activeBadgeWorker = { id, name, dept, type, agency };
-
-            JsBarcode("#previewBarcodeSvg", id, { format: "CODE128", width: 1.4, height: 32, fontSize: 11, displayValue: true, margin: 0 });
-
-            document.getElementById('badgeName').innerText = name;
-            document.getElementById('badgeType').innerText = type === 'Contractor' ? `Contractor (${agency})` : 'Regular Employee';
-            document.getElementById('badgeDept').innerText = `Dept: ${dept}`;
-
+            // Render Preview Card
+            document.getElementById('badgeName').textContent = name;
+            document.getElementById('badgeType').textContent = `${type}${agency ? ' (' + agency + ')' : ''}`;
+            document.getElementById('badgeDept').textContent = `Dept: ${dept} | ID: ${id}`;
             document.getElementById('barcodePreviewCard').classList.remove('hidden');
+
+            JsBarcode("#previewBarcodeSvg", id, {
+                format: "CODE128",
+                width: 1.5,
+                height: 40,
+                displayValue: true,
+                fontSize: 12,
+                margin: 2
+            });
+
+            renderDirectoryTable();
+            alert(`Worker ${name} successfully saved!`);
         }
 
         function printSingleBadgeFromPreview() {
-            if (!activeBadgeWorker) return;
-            printBulkBadges([activeBadgeWorker.id]);
+            const id = document.getElementById('newWorkerId').value.trim();
+            if (id && workersDirectory[id]) {
+                printBadgesArray([workersDirectory[id]]);
+            }
         }
 
-        function reprintWorkerBadge(id) {
-            printBulkBadges([id]);
+        function printSingleBadgeFromDir(workerId) {
+            if (workersDirectory[workerId]) {
+                printBadgesArray([workersDirectory[workerId]]);
+            }
         }
 
-        function printSelectedBadges() {
-            if (selectedWorkerIds.size === 0) {
-                alert("Please select at least one worker from the directory checkbox list to print badges!");
+        function printBulkBadges() {
+            const list = Object.values(workersDirectory);
+            if (list.length === 0) {
+                alert("No workers registered to print.");
                 return;
             }
-            printBulkBadges(Array.from(selectedWorkerIds));
+            printBadgesArray(list);
         }
 
-        function printBulkBadges(idArray) {
+        function printBadgesArray(workers) {
             const container = document.getElementById('printBadgesContainer');
             container.innerHTML = '';
 
-            idArray.forEach(id => {
-                const w = workers[id];
-                if (!w) return;
-
-                const badgeDiv = document.createElement('div');
-                badgeDiv.className = 'badge-print-box';
-                badgeDiv.innerHTML = `
-                    <div style="text-align: center; width: 100%;">
-                        <div style="font-size: 10.5pt; font-weight: bold; text-transform: uppercase; line-height: 1.1; margin-bottom: 2px;">${w.name}</div>
-                        <div style="font-size: 7.5pt; font-weight: bold; color: #1d4ed8; margin-bottom: 2px;">${w.type === 'Contractor' ? `Contractor - ${w.agency}` : 'Regular Employee'}</div>
-                        <div style="font-size: 7.5pt; color: #4b5563;">Dept: ${w.dept || 'General'}</div>
-                    </div>
-                    <div style="display: flex; justify-content: center; align-items: center; width: 100%; margin: 2px 0;">
-                        <svg id="print_svg_${id}" style="max-height: 35px; width: auto;"></svg>
-                    </div>
-                    <div style="text-align: center; font-size: 7.5pt; font-family: monospace; color: #374151; font-weight: bold; width: 100%;">
-                        ID: ${id}
+            workers.forEach(w => {
+                const box = document.createElement('div');
+                box.className = "badge-print-box";
+                const svgId = `print_svg_${w.id}_${Math.random().toString(36).substr(2, 5)}`;
+                
+                box.innerHTML = `
+                    <div style="font-weight: bold; font-size: 11pt; color: #000; line-height: 1.1;">${w.name}</div>
+                    <div style="font-size: 8pt; color: #333; margin-top: 1mm;">${w.type}${w.agency ? ' - ' + w.agency : ''}</div>
+                    <div style="font-size: 7.5pt; color: #555;">${w.dept || 'General'}</div>
+                    <div style="margin-top: 2mm;">
+                        <svg id="${svgId}"></svg>
                     </div>
                 `;
-                container.appendChild(badgeDiv);
+                container.appendChild(box);
 
                 setTimeout(() => {
-                    JsBarcode(`#print_svg_${id}`, id, { format: "CODE128", width: 1.3, height: 28, fontSize: 10, displayValue: true, margin: 0 });
+                    try {
+                        JsBarcode(`#${svgId}`, w.id, {
+                            format: "CODE128",
+                            width: 1.3,
+                            height: 35,
+                            displayValue: true,
+                            fontSize: 10,
+                            margin: 0
+                        });
+                    } catch (e) {}
                 }, 10);
             });
 
@@ -1220,731 +1205,266 @@
             }, 300);
         }
 
-        function toggleSelectAllWorkers(master) {
-            const checkboxes = document.querySelectorAll('.worker-checkbox');
-            checkboxes.forEach(cb => {
-                cb.checked = master.checked;
-                if (master.checked) selectedWorkerIds.add(cb.value);
-                else selectedWorkerIds.delete(cb.value);
-            });
-            document.getElementById('selectedCount').innerText = selectedWorkerIds.size;
+        // --- Camera Scanner Toggle ---
+        function toggleCameraScanner() {
+            getAudioContext(); // Resume Web Audio Context on button touch
+            const readerEl = document.getElementById('reader');
+            
+            if (isScannerRunning) {
+                if (html5QrcodeScanner) {
+                    html5QrcodeScanner.clear();
+                }
+                readerEl.classList.add('hidden');
+                isScannerRunning = false;
+            } else {
+                readerEl.classList.remove('hidden');
+                html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+                html5QrcodeScanner.render((decodedText) => {
+                    processBarcodeScan(decodedText);
+                }, (error) => {});
+                isScannerRunning = true;
+            }
         }
 
-        function toggleWorkerSelect(id, cb) {
-            if (cb.checked) selectedWorkerIds.add(id);
-            else selectedWorkerIds.delete(id);
-            document.getElementById('selectedCount').innerText = selectedWorkerIds.size;
+        // --- CSV Import & Export ---
+        function exportToCSV(todayOnly) {
+            const todayStr = getTodayDateString();
+            const logsToExport = todayOnly ? attendanceLogs.filter(l => l.date === todayStr) : attendanceLogs;
+
+            if (logsToExport.length === 0) {
+                alert("No logs available to export.");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Date,Worker ID,Name,Department,Type,Agency,In Time,Out Time,Total Hours,OT Hours,Logged By,Status\n";
+
+            logsToExport.forEach(l => {
+                const row = [
+                    l.date,
+                    `"${l.workerId}"`,
+                    `"${l.name}"`,
+                    `"${l.dept}"`,
+                    `"${l.type}"`,
+                    `"${l.agency || ''}"`,
+                    l.inTime,
+                    l.outTime || '',
+                    l.totalHours,
+                    l.otHours,
+                    `"${l.loggedBy}"`,
+                    l.status
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Attendance_Logs_${todayOnly ? todayStr : 'All_History'}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function downloadCSVTemplate() {
+            let csv = "data:text/csv;charset=utf-8,ID,Name,Department,Type,Agency\n";
+            csv += "W1001,Rajesh Kumar,Assembly,Regular,\n";
+            csv += "W1002,Suresh Sharma,Pultrusion,Contractor,Apex Services\n";
+            
+            const uri = encodeURI(csv);
+            const a = document.createElement('a');
+            a.href = uri;
+            a.download = "Worker_Import_Template.csv";
+            a.click();
         }
 
         function importWorkersCSV() {
-            if (!currentUser) {
-                alert("Cloud connection inactive. Please wait for Firebase initialization.");
-                return;
-            }
-
             const fileInput = document.getElementById('csvFileInput');
-            const file = fileInput.files[0];
-
-            if (!file) {
-                alert("Please select a CSV file to import!");
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert("Please select a CSV file first.");
                 return;
             }
 
+            const file = fileInput.files[0];
             const reader = new FileReader();
-            reader.onload = async function(e) {
+            reader.onload = function(e) {
                 const text = e.target.result;
-                const lines = text.split(/\r\n|\n/);
-                let importedCount = 0;
+                const lines = text.split('\n');
+                let count = 0;
 
-                for (let index = 0; index < lines.length; index++) {
-                    const line = lines[index];
-                    if (index === 0 || !line.trim()) continue;
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+                    const cols = line.split(',').map(c => c.replace(/^"|"$/g, '').trim());
 
-                    const parts = line.split(',').map(p => p.trim().replace(/^"(.*)"$/, '$1'));
-                    if (parts.length >= 2) {
-                        const id = parts[0];
-                        const name = parts[1];
-                        const dept = parts[2] || 'General';
-                        const type = (parts[3] && parts[3].toLowerCase() === 'contractor') ? 'Contractor' : 'Regular';
-                        const agency = type === 'Contractor' ? (parts[4] || 'Independent') : '-';
+                    if (cols.length >= 2) {
+                        const id = cols[0];
+                        const name = cols[1];
+                        const dept = cols[2] || 'General';
+                        const type = cols[3] || 'Regular';
+                        const agency = cols[4] || '';
 
                         if (id && name) {
-                            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'workers', id), {
-                                name, dept, type, agency, updatedAt: Date.now()
-                            });
-                            importedCount++;
+                            workersDirectory[id] = { id, name, dept, type, agency };
+                            count++;
                         }
                     }
                 }
 
-                alert(`Successfully synced ${importedCount} worker profiles to Firebase Cloud!`);
-                fileInput.value = '';
+                saveToLocalStorage();
+                renderDirectoryTable();
+                alert(`Successfully imported ${count} workers to directory!`);
             };
             reader.readAsText(file);
         }
 
-        function downloadCSVTemplate() {
-            const sampleCSV = "Worker ID,Full Name,Department,Category,Agency\n" +
-                              "W104,Rohan Das,Production,Regular,-\n" +
-                              "W105,Pooja Naik,Maintenance,Contractor,Excel Workforce\n";
-            const blob = new Blob([sampleCSV], { type: "text/csv;charset=utf-8;" });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute("download", "Worker_Import_Template.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        async function deleteWorkerProfile(id) {
-            if (!currentUser) return;
-            if (confirm(`Are you sure you want to delete ${workers[id]?.name || id} from Firebase database?`)) {
-                try {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'workers', id));
-                    selectedWorkerIds.delete(id);
-                    showAlert(`🗑️ Worker ${id} deleted from cloud.`, 'bg-amber-100 border-amber-400 text-amber-800');
-                } catch (err) {
-                    showAlert("Delete failed: " + err.message, "bg-red-100 border-red-400 text-red-800");
-                }
-            }
-        }
-
-        async function handleBarcodeScan(scannedId) {
-            if (!currentUser) {
-                showAlert("⚠️ Scanner unavailable: Waiting for cloud sync connection.", "bg-amber-100 border-amber-400 text-amber-800");
-                return;
-            }
-
-            const nowTime = Date.now();
-            let worker = workers[scannedId];
-            let name = worker ? worker.name : `Worker (${scannedId})`;
-
-            const todayStr = getLocalDateString();
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString('en-IN', { hour12: false });
-            
-            let type = worker ? (worker.type || 'Regular') : 'Regular';
-            let agency = worker ? (worker.agency || '-') : '-';
-            const userTag = getActiveUserTag();
-
-            let record = attendanceLogs.find(r => r.id === scannedId && r.date === todayStr && !r.outTime);
-
-            if (record && (nowTime - (record.scanTimestamp || 0)) < SCAN_COOLDOWN_MS) {
-                showAlert(`⚠️ DUPLICATE SCAN IGNORED: ${name} scanned recently.`, 'bg-amber-100 border-amber-400 text-amber-800');
-                return;
-            }
-
-            if (!record) {
-                let finishedRecord = attendanceLogs.find(r => r.id === scannedId && r.date === todayStr && r.outTime);
-                if (finishedRecord) {
-                    showAlert(`⚠️ ${name} has already logged OUT for today.`, 'bg-yellow-100 border-yellow-400 text-yellow-800');
-                    return;
-                }
-
-                const docKey = `${todayStr}_${scannedId}`;
-                const newRecord = {
-                    id: scannedId,
-                    name: name,
-                    type: type,
-                    agency: agency,
-                    date: todayStr,
-                    inTime: timeStr,
-                    outTime: null,
-                    totalHours: '0.00',
-                    otHours: '0.00',
-                    status: 'IN',
-                    manualOT: false,
-                    createdBy: userTag,
-                    scanTimestamp: nowTime
-                };
-
-                try {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docKey), newRecord);
-                    showAlert(`✅ IN PUNCH: ${name} checked in at ${timeStr} by ${userTag}`, 'bg-blue-100 border-blue-400 text-blue-800');
-                } catch (err) {
-                    showAlert("Check-in error: " + err.message, "bg-red-100 border-red-400 text-red-800");
-                }
-
-            } else {
-                const docKey = record.docId || `${todayStr}_${scannedId}`;
-                
-                const updatedRecord = { ...record };
-                updatedRecord.outTime = timeStr;
-                updatedRecord.status = 'COMPLETED';
-                updatedRecord.completedBy = userTag;
-                updatedRecord.scanTimestamp = nowTime;
-
-                calculateOvertime(updatedRecord);
-
-                try {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docKey), updatedRecord);
-                    showAlert(`🔴 OUT PUNCH: ${name} checked out at ${timeStr} by ${userTag}`, 'bg-purple-100 border-purple-400 text-purple-800');
-                } catch (err) {
-                    showAlert("Check-out error: " + err.message, "bg-red-100 border-red-400 text-red-800");
-                }
-            }
-        }
-
-        function calculateOvertime(record) {
-            if (record.manualOT || !record.outTime) return;
-
-            const shiftHrs = parseFloat(document.getElementById('shiftHours').value) || 8;
-
-            const [inH, inM, inS] = record.inTime.split(':').map(Number);
-            const [outH, outM, outS] = record.outTime.split(':').map(Number);
-
-            let inDate = new Date(2000, 0, 1, inH, inM, inS || 0);
-            let outDate = new Date(2000, 0, 1, outH, outM, outS || 0);
-
-            if (outDate < inDate) {
-                outDate.setDate(outDate.getDate() + 1);
-            }
-
-            let diffMs = outDate - inDate;
-            let totalHours = Math.max(0, diffMs / (1000 * 60 * 60));
-
-            let otHours = 0;
-            if (totalHours >= (shiftHrs + 0.5)) {
-                otHours = totalHours - shiftHrs;
-            }
-
-            record.totalHours = totalHours.toFixed(2);
-            record.otHours = otHours.toFixed(2);
-        }
-
-        async function recalculateAllOT() {
-            if (!currentUser) return;
-
-            const todayStr = getLocalDateString();
-            const todayLogs = attendanceLogs.filter(r => r.date === todayStr && r.outTime && !r.manualOT);
-
-            for (let record of todayLogs) {
-                calculateOvertime(record);
-                const docKey = record.docId || `${record.date}_${record.id}`;
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docKey), record);
-            }
-
-            renderDailyTable();
-            renderHistoryTable();
-        }
-
-        async function editManualOT(globalIndex) {
-            let record = attendanceLogs[globalIndex];
-            if (!record || !currentUser) return;
-
-            let newOT = prompt(`Enter manual Overtime hours for ${record.name} (Current: ${record.otHours} hrs):`, record.otHours);
-            if (newOT !== null) {
-                let parsedOT = parseFloat(newOT);
-                if (!isNaN(parsedOT) && parsedOT >= 0) {
-                    record.otHours = parsedOT.toFixed(2);
-                    record.manualOT = true;
-                    record.modifiedBy = getActiveUserTag();
-                    
-                    const docKey = record.docId || `${record.date}_${record.id}`;
-                    try {
-                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docKey), record);
-                        showAlert(`✏️ Manual OT set to ${record.otHours} hrs for ${record.name} on Cloud by ${record.modifiedBy}`, 'bg-blue-100 border-blue-400 text-blue-800');
-                    } catch (err) {
-                        showAlert("Failed to update OT: " + err.message, "bg-red-100 border-red-400 text-red-800");
-                    }
-                } else {
-                    alert("Invalid overtime value. Please enter a positive number.");
-                }
-            }
-        }
-
-        // Clear Log Authentication Flow
+        // --- Clear Records Actions ---
         function promptClearTodayRecords() {
-            pendingClearAction = 'today';
-            targetSingleLogDocKey = null;
-            document.getElementById('clearAuthPromptText').innerText = "Enter administrator password to clear today's attendance logs.";
-            document.getElementById('clearAuthPassword').value = '';
-            document.getElementById('clearAuthModal').classList.remove('hidden');
-            document.getElementById('clearAuthPassword').focus();
+            if (currentUser.role !== 'Admin') {
+                alert("Restricted: Only Admin users can clear attendance logs.");
+                return;
+            }
+            if (confirm("Are you sure you want to clear TODAY'S attendance logs?")) {
+                const todayStr = getTodayDateString();
+                attendanceLogs = attendanceLogs.filter(l => l.date !== todayStr);
+                saveToLocalStorage();
+                renderDailyTable();
+            }
         }
 
         function promptClearAllRecords() {
-            pendingClearAction = 'all';
-            targetSingleLogDocKey = null;
-            document.getElementById('clearAuthPromptText').innerText = "Enter administrator password to clear ALL historical attendance logs.";
-            document.getElementById('clearAuthPassword').value = '';
-            document.getElementById('clearAuthModal').classList.remove('hidden');
-            document.getElementById('clearAuthPassword').focus();
-        }
-
-        function promptDeleteSingleLog(docKey, workerName) {
-            pendingClearAction = 'single';
-            targetSingleLogDocKey = docKey;
-            document.getElementById('clearAuthPromptText').innerText = `Enter administrator password to delete attendance log for "${workerName}".`;
-            document.getElementById('clearAuthPassword').value = '';
-            document.getElementById('clearAuthModal').classList.remove('hidden');
-            document.getElementById('clearAuthPassword').focus();
-        }
-
-        function closeClearAuthModal() {
-            document.getElementById('clearAuthModal').classList.add('hidden');
-            pendingClearAction = null;
-            targetSingleLogDocKey = null;
-        }
-
-        async function executeConfirmedClear() {
-            const passwordInput = document.getElementById('clearAuthPassword').value;
-
-            if (passwordInput !== ADMIN_CLEAR_PASSWORD) {
-                alert("Incorrect clearance password! Action denied.");
+            if (currentUser.role !== 'Admin') {
+                alert("Restricted: Only Admin users can clear historical logs.");
                 return;
             }
-
-            const action = pendingClearAction;
-            const singleDocKey = targetSingleLogDocKey;
-
-            if (!action) {
-                alert("No operation selected. Please try again.");
-                return;
-            }
-
-            closeClearAuthModal();
-
-            try {
-                if (action === 'today') {
-                    await clearTodayRecordsConfirmed();
-                } 
-                else if (action === 'all') {
-                    await clearAllRecordsConfirmed();
-                }
-                else if (action === 'single' && singleDocKey) {
-                    await deleteSingleLogConfirmed(singleDocKey);
-                }
-            } catch (error) {
-                console.error("Clear logs error:", error);
-                alert("Unable to complete operation: " + error.message);
+            if (confirm("⚠️ CRITICAL WARNING: Delete ALL historical attendance logs permanently?")) {
+                attendanceLogs = [];
+                saveToLocalStorage();
+                renderDailyTable();
+                renderHistoryTable();
             }
         }
 
-        async function clearTodayRecordsConfirmed() {
-            if (!currentUser) return;
-            const todayStr = getLocalDateString();
-            const todayLogs = attendanceLogs.filter(r => r.date === todayStr);
-            
-            for (let r of todayLogs) {
-                const docKey = r.docId || `${r.date}_${r.id}`;
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docKey));
-            }
-            showAlert("Cleared today's records from cloud with password authentication.", "bg-amber-100 border-amber-400 text-amber-800");
-        }
+        // --- Auth & User Management Modal Logic ---
+        function updateUserUI() {
+            const userDisplay = document.getElementById('userInfoDisplay');
+            const loginBtn = document.getElementById('loginHeaderBtn');
+            const logoutBtn = document.getElementById('logoutHeaderBtn');
+            const createBtn = document.getElementById('createUserHeaderBtn');
 
-        async function clearAllRecordsConfirmed() {
-            if (!currentUser) return;
-            for (let r of attendanceLogs) {
-                const docKey = r.docId || `${r.date}_${r.id}`;
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docKey));
-            }
-            showAlert("Cleared all historical records from cloud with password authentication.", "bg-amber-100 border-amber-400 text-amber-800");
-        }
+            if (currentUser) {
+                userDisplay.classList.remove('hidden');
+                document.getElementById('userNameDisplay').textContent = currentUser.name;
+                document.getElementById('userRoleBadge').textContent = currentUser.role;
 
-        async function deleteSingleLogConfirmed(docKey) {
-            if (!currentUser) return;
-            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docKey));
-            showAlert("Attendance log successfully deleted.", "bg-amber-100 border-amber-400 text-amber-800");
-        }
+                loginBtn.classList.add('hidden');
+                logoutBtn.classList.remove('hidden');
 
-        function renderDailyTable() {
-            const tbody = document.getElementById('dailyTableBody');
-            const mobileList = document.getElementById('dailyMobileList');
-            const todayStr = getLocalDateString();
-            const filterType = document.getElementById('dailyFilterType').value;
-
-            let todayLogs = attendanceLogs.filter(r => r.date === todayStr);
-
-            if (filterType !== 'ALL') {
-                todayLogs = todayLogs.filter(r => (r.type || 'Regular') === filterType);
-            }
-
-            tbody.innerHTML = '';
-            mobileList.innerHTML = '';
-            
-            let presentCount = 0;
-            let contractorCount = 0;
-            let completedCount = 0;
-            let totalOT = 0;
-
-            const allTodayLogs = attendanceLogs.filter(r => r.date === todayStr);
-            allTodayLogs.forEach(r => {
-                presentCount++;
-                if (r.type === 'Contractor') contractorCount++;
-                if (r.status === 'COMPLETED') completedCount++;
-                totalOT += parseFloat(r.otHours || 0);
-            });
-
-            if (todayLogs.length === 0) {
-                const emptyMsg = `<div class="py-4 text-center text-gray-400 text-xs">No records logged for today matching filter. Scan barcode to check in.</div>`;
-                tbody.innerHTML = `<tr><td colspan="10" class="py-4 text-center text-gray-400">No records logged for today matching filter. Scan barcode to check in.</td></tr>`;
-                mobileList.innerHTML = emptyMsg;
-            } else {
-                todayLogs.forEach((r) => {
-                    let globalIndex = attendanceLogs.indexOf(r);
-                    let docKey = r.docId || `${r.date}_${r.id}`;
-                    let safeName = r.name.replace(/'/g, "\\'");
-                    let loggedByUser = r.modifiedBy || r.completedBy || r.createdBy || 'System Auto Scan';
-
-                    let typeBadge = r.type === 'Contractor'
-                        ? `<span class="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-semibold text-[9px]">Contractor</span>`
-                        : `<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-semibold text-[9px]">Regular</span>`;
-
-                    let statusBadge = r.status === 'IN' 
-                        ? `<span class="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-semibold text-[9px]">IN</span>`
-                        : `<span class="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-semibold text-[9px]">DONE</span>`;
-
-                    let otDisplay = parseFloat(r.otHours) > 0 
-                        ? `<span class="text-red-600 font-bold">${r.otHours} ${r.manualOT ? '✏️' : ''}</span>`
-                        : `<span class="text-gray-500">${r.otHours || '0.00'}</span>`;
-
-                    tbody.innerHTML += `
-                        <tr class="hover:bg-gray-50 border-b">
-                            <td class="py-2 px-3 font-bold text-gray-700">${r.id}</td>
-                            <td class="py-2 px-3 font-sans text-gray-900 font-medium">${r.name}</td>
-                            <td class="py-2 px-3">${typeBadge}</td>
-                            <td class="py-2 px-3 text-emerald-700">${r.inTime}</td>
-                            <td class="py-2 px-3 text-purple-700">
-                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="hover:underline flex items-center gap-0.5 font-bold">
-                                    <span>${r.outTime || '--:--'}</span>
-                                    <span class="text-[9px] text-gray-400">✏️</span>
-                                </button>
-                            </td>
-                            <td class="py-2 px-3 font-bold">${r.totalHours || '0.00'}</td>
-                            <td class="py-2 px-3 font-bold">${otDisplay}</td>
-                            <td class="py-2 px-3 text-gray-600 font-sans text-[10px] truncate max-w-[100px]" title="${loggedByUser}">👤 ${loggedByUser}</td>
-                            <td class="py-2 px-3">${statusBadge}</td>
-                            <td class="py-2 px-3 text-right no-print flex justify-end gap-1 items-center">
-                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="text-purple-700 hover:text-purple-900 text-[10px] font-semibold bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">🕒 Out</button>
-                                <button onclick="editManualOT(${globalIndex})" class="text-blue-600 hover:text-blue-800 text-[10px] font-semibold underline bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">✏️ OT</button>
-                                <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="text-red-600 hover:text-red-800 text-[10px] font-semibold bg-red-50 px-1.5 py-0.5 rounded border border-red-200">🗑️</button>
-                            </td>
-                        </tr>
-                    `;
-
-                    mobileList.innerHTML += `
-                        <div class="p-3 bg-white space-y-1.5 border-b">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <span class="font-bold text-gray-800 text-xs font-mono">${r.id}</span> - 
-                                    <span class="font-semibold text-gray-900 text-xs">${r.name}</span>
-                                    <div class="mt-0.5">${typeBadge}</div>
-                                </div>
-                                ${statusBadge}
-                            </div>
-                            <div class="grid grid-cols-2 gap-1.5 text-[11px] bg-slate-50 p-2 rounded border border-slate-200 font-mono">
-                                <div><span class="text-gray-500 block text-[9px]">IN TIME</span><span class="text-emerald-700 font-bold">${r.inTime}</span></div>
-                                <div>
-                                    <span class="text-gray-500 block text-[9px]">OUT TIME</span>
-                                    <button onclick="openModifyOutTimeModal(${globalIndex})" class="text-purple-700 font-bold underline flex items-center gap-0.5">
-                                        <span>${r.outTime || '--:--'}</span> ✏️
-                                    </button>
-                                </div>
-                                <div><span class="text-gray-500 block text-[9px]">TOTAL WORK</span><span class="font-bold">${r.totalHours || '0.00'} hrs</span></div>
-                                <div><span class="text-gray-500 block text-[9px]">OVERTIME</span><span class="font-bold">${otDisplay} hrs</span></div>
-                            </div>
-                            <div class="text-[10px] text-gray-500 flex items-center gap-1">
-                                <span>👤 Logged By:</span> <strong class="text-gray-700">${loggedByUser}</strong>
-                            </div>
-                            <div class="flex gap-1.5 pt-0.5 no-print">
-                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="flex-1 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 py-1 rounded text-[11px] font-semibold">🕒 Modify Out Time</button>
-                                <button onclick="editManualOT(${globalIndex})" class="flex-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 py-1 rounded text-[11px] font-semibold">✏️ OT</button>
-                                <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 px-2 py-1 rounded text-[11px] font-semibold">🗑️</button>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-
-            document.getElementById('statPresent').innerText = presentCount;
-            document.getElementById('statContractors').innerText = contractorCount;
-            document.getElementById('statCompleted').innerText = completedCount;
-            document.getElementById('statTotalOT').innerText = totalOT.toFixed(2);
-        }
-
-        function renderHistoryTable() {
-            const tbody = document.getElementById('historyTableBody');
-            const mobileList = document.getElementById('historyMobileList');
-            const filterDate = document.getElementById('historyFilterDate').value;
-            const searchQuery = document.getElementById('historySearchQuery').value.toLowerCase().trim();
-            const filterType = document.getElementById('historyFilterType').value;
-            const filterDept = document.getElementById('historyFilterDept').value;
-
-            let filteredLogs = [...attendanceLogs];
-
-            if (filterDate) {
-                filteredLogs = filteredLogs.filter(r => r.date === filterDate);
-            }
-            if (searchQuery) {
-                filteredLogs = filteredLogs.filter(r => r.name.toLowerCase().includes(searchQuery) || r.id.toLowerCase().includes(searchQuery));
-            }
-            if (filterType !== 'ALL') {
-                filteredLogs = filteredLogs.filter(r => (r.type || 'Regular') === filterType);
-            }
-            if (filterDept !== 'ALL') {
-                filteredLogs = filteredLogs.filter(r => {
-                    let w = workers[r.id];
-                    return w && w.dept === filterDept;
-                });
-            }
-
-            tbody.innerHTML = '';
-            mobileList.innerHTML = '';
-
-            if (filteredLogs.length === 0) {
-                const emptyMsg = `<div class="py-6 text-center text-gray-400 text-xs">No historical records found matching filter.</div>`;
-                tbody.innerHTML = `<tr><td colspan="11" class="py-6 text-center text-gray-400">No historical records found matching filter.</td></tr>`;
-                mobileList.innerHTML = emptyMsg;
-            } else {
-                [...filteredLogs].reverse().forEach((r) => {
-                    let globalIndex = attendanceLogs.indexOf(r);
-                    let docKey = r.docId || `${r.date}_${r.id}`;
-                    let safeName = r.name.replace(/'/g, "\\ me");
-                    let loggedByUser = r.modifiedBy || r.completedBy || r.createdBy || 'System Auto Scan';
-
-                    let typeBadge = r.type === 'Contractor'
-                        ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold text-[10px]">Contractor (${r.agency || 'Independent'})</span>`
-                        : `<span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-semibold text-[10px]">Regular</span>`;
-
-                    let statusBadge = r.status === 'IN' 
-                        ? `<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-semibold text-[10px]">IN PUNCH</span>`
-                        : `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-semibold text-[10px]">COMPLETED</span>`;
-
-                    let otDisplay = parseFloat(r.otHours) > 0 
-                        ? `<span class="text-red-600 font-bold">${r.otHours} ${r.manualOT ? '✏️' : ''}</span>`
-                        : `<span class="text-gray-500">${r.otHours || '0.00'}</span>`;
-
-                    tbody.innerHTML += `
-                        <tr class="hover:bg-gray-50 border-b">
-                            <td class="py-3 px-4 font-semibold text-gray-600">${r.date}</td>
-                            <td class="py-3 px-4 font-bold text-gray-700">${r.id}</td>
-                            <td class="py-3 px-4 font-sans text-gray-900">${r.name}</td>
-                            <td class="py-3 px-4">${typeBadge}</td>
-                            <td class="py-3 px-4 text-emerald-700">${r.inTime}</td>
-                            <td class="py-3 px-4 text-purple-700 font-bold">
-                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="hover:underline flex items-center gap-1 font-bold">
-                                    <span>${r.outTime || '--:--'}</span>
-                                    <span class="text-[10px] text-gray-400">✏️</span>
-                                </button>
-                            </td>
-                            <td class="py-3 px-4 font-bold">${r.totalHours || '0.00'}</td>
-                            <td class="py-3 px-4 font-bold">${otDisplay}</td>
-                            <td class="py-3 px-4 text-gray-600 font-sans text-[11px] truncate max-w-[120px]" title="${loggedByUser}">👤 ${loggedByUser}</td>
-                            <td class="py-3 px-4">${statusBadge}</td>
-                            <td class="py-3 px-4 text-right flex justify-end gap-1.5 items-center">
-                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="text-purple-700 hover:text-purple-900 text-[11px] font-semibold bg-purple-50 px-2 py-1 rounded border border-purple-200">🕒 Out</button>
-                                <button onclick="editManualOT(${globalIndex})" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold underline bg-blue-50 px-2 py-1 rounded border border-blue-200">✏️ OT</button>
-                                <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="text-red-600 hover:text-red-800 text-[11px] font-semibold bg-red-50 px-2 py-1 rounded border border-red-200">🗑️ Delete</button>
-                            </td>
-                        </tr>
-                    `;
-
-                    mobileList.innerHTML += `
-                        <div class="p-4 bg-white space-y-2 border-b">
-                            <div class="flex justify-between items-center text-xs text-gray-500">
-                                <span class="font-bold text-gray-700">${r.date}</span>
-                                ${statusBadge}
-                            </div>
-                            <div>
-                                <span class="font-bold text-gray-800 text-sm font-mono">${r.id}</span> - 
-                                <span class="font-semibold text-gray-900 text-sm">${r.name}</span>
-                                <div class="mt-1">${typeBadge}</div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-200 font-mono">
-                                <div><span class="text-gray-500 block text-[10px]">IN TIME</span><span class="text-emerald-700 font-bold">${r.inTime}</span></div>
-                                <div>
-                                    <span class="text-gray-500 block text-[10px]">OUT TIME</span>
-                                    <button onclick="openModifyOutTimeModal(${globalIndex})" class="text-purple-700 font-bold underline flex items-center gap-1">
-                                        <span>${r.outTime || '--:--'}</span> ✏️
-                                    </button>
-                                </div>
-                                <div><span class="text-gray-500 block text-[10px]">TOTAL WORK</span><span class="font-bold">${r.totalHours || '0.00'} hrs</span></div>
-                                <div><span class="text-gray-500 block text-[10px]">OVERTIME</span><span class="font-bold">${otDisplay} hrs</span></div>
-                            </div>
-                            <div class="text-[11px] text-gray-500 flex items-center gap-1">
-                                <span>👤 Logged / Updated By:</span> <strong class="text-gray-700">${loggedByUser}</strong>
-                            </div>
-                            <div class="flex gap-2 pt-1">
-                                <button onclick="openModifyOutTimeModal(${globalIndex})" class="flex-1 bg-purple-50 text-purple-700 border border-purple-200 py-1.5 rounded text-xs font-semibold">🕒 Modify Out Time</button>
-                                <button onclick="editManualOT(${globalIndex})" class="flex-1 bg-blue-50 text-blue-700 border border-blue-200 py-1.5 rounded text-xs font-semibold">✏️ OT</button>
-                                <button onclick="promptDeleteSingleLog('${docKey}', '${safeName}')" class="bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded text-xs font-semibold">🗑️</button>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-        }
-
-        function renderDirectoryTable() {
-            const tbody = document.getElementById('directoryTableBody');
-            const mobileList = document.getElementById('directoryMobileList');
-            const searchQuery = document.getElementById('directorySearchQuery').value.toLowerCase().trim();
-            const filterType = document.getElementById('directoryFilterType').value;
-            const filterDept = document.getElementById('directoryFilterDept').value;
-
-            let workerIds = Object.keys(workers);
-            let filteredIds = workerIds.filter(id => {
-                let w = workers[id];
-                let matchesSearch = w.name.toLowerCase().includes(searchQuery) || id.toLowerCase().includes(searchQuery);
-                let matchesType = filterType === 'ALL' || (w.type || 'Regular') === filterType;
-                let matchesDept = filterDept === 'ALL' || w.dept === filterDept;
-                return matchesSearch && matchesType && matchesDept;
-            });
-
-            document.getElementById('directoryTotalBadge').innerText = `Total: ${filteredIds.length} Workers`;
-            document.getElementById('selectedCount').innerText = selectedWorkerIds.size;
-            tbody.innerHTML = '';
-            mobileList.innerHTML = '';
-
-            if (filteredIds.length === 0) {
-                const emptyMsg = `<div class="py-6 text-center text-gray-400 text-xs">No workers found in directory.</div>`;
-                tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-gray-400">No workers found in directory.</td></tr>`;
-                mobileList.innerHTML = emptyMsg;
-            } else {
-                filteredIds.forEach(id => {
-                    let w = workers[id];
-                    let isChecked = selectedWorkerIds.has(id) ? 'checked' : '';
-                    let typeBadge = w.type === 'Contractor'
-                        ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold text-[10px]">Contractor</span>`
-                        : `<span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-semibold text-[10px]">Regular Employee</span>`;
-
-                    tbody.innerHTML += `
-                        <tr class="hover:bg-gray-50 border-b">
-                            <td class="py-3 px-4">
-                                <input type="checkbox" value="${id}" ${isChecked} onchange="toggleWorkerSelect('${id}', this)" class="worker-checkbox">
-                            </td>
-                            <td class="py-3 px-4 font-bold font-mono text-gray-800">${id}</td>
-                            <td class="py-3 px-4 font-semibold text-gray-900">${w.name}</td>
-                            <td class="py-3 px-4">${typeBadge}</td>
-                            <td class="py-3 px-4 text-gray-600">${w.agency || '-'}</td>
-                            <td class="py-3 px-4 text-gray-600">${w.dept || 'General'}</td>
-                            <td class="py-3 px-4 text-right flex justify-end gap-2">
-                                <button onclick="reprintWorkerBadge('${id}')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 text-xs px-2.5 py-1 rounded font-medium transition">
-                                    🖨️ Print Badge
-                                </button>
-                                <button onclick="deleteWorkerProfile('${id}')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs px-2 py-1 rounded transition">
-                                    🗑️ Delete
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-
-                    mobileList.innerHTML += `
-                        <div class="p-4 bg-white space-y-2">
-                            <div class="flex justify-between items-start">
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" value="${id}" ${isChecked} onchange="toggleWorkerSelect('${id}', this)" class="worker-checkbox w-4 h-4">
-                                    <div>
-                                        <span class="font-bold text-gray-800 text-sm font-mono">${id}</span>
-                                        <h4 class="font-bold text-gray-900 text-base">${w.name}</h4>
-                                    </div>
-                                </div>
-                                ${typeBadge}
-                            </div>
-                            <div class="text-xs text-gray-600 space-y-1 bg-slate-50 p-2.5 rounded border border-slate-200">
-                                <div><span class="font-semibold text-gray-500">Department:</span> ${w.dept || 'General'}</div>
-                                <div><span class="font-semibold text-gray-500">Contractor Company:</span> ${w.agency || '-'}</div>
-                            </div>
-                            <div class="flex gap-2 pt-1">
-                                <button onclick="reprintWorkerBadge('${id}')" class="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 py-2 rounded text-xs font-semibold text-center">
-                                    🖨️ Print Badge
-                                </button>
-                                <button onclick="deleteWorkerProfile('${id}')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded text-xs font-semibold">
-                                    🗑️ Delete
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-        }
-
-        function populateDepartmentDropdowns() {
-            const depts = new Set();
-            Object.values(workers).forEach(w => {
-                if (w.dept) depts.add(w.dept);
-            });
-
-            const histSelect = document.getElementById('historyFilterDept');
-            const dirSelect = document.getElementById('directoryFilterDept');
-
-            histSelect.innerHTML = '<option value="ALL">All Departments</option>';
-            dirSelect.innerHTML = '<option value="ALL">All Departments</option>';
-
-            depts.forEach(dept => {
-                histSelect.innerHTML += `<option value="${dept}">${dept}</option>`;
-                dirSelect.innerHTML += `<option value="${dept}">${dept}</option>`;
-            });
-        }
-
-        function showAlert(msg, colorClass) {
-            const alertBox = document.getElementById('scanAlert');
-            alertBox.className = `p-3 sm:p-4 rounded-xl border font-medium text-xs sm:text-sm transition-all duration-300 ${colorClass}`;
-            alertBox.innerText = msg;
-            alertBox.classList.remove('hidden');
-
-            setTimeout(() => {
-                alertBox.classList.add('hidden');
-            }, 5000);
-        }
-
-        function toggleCameraScanner() {
-            const readerElement = document.getElementById('reader');
-            if (readerElement.classList.contains('hidden')) {
-                readerElement.classList.remove('hidden');
-                html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 220, height: 140 } });
-                html5QrcodeScanner.render((decodedText) => {
-                    handleBarcodeScan(decodedText);
-                }, (error) => {});
-            } else {
-                if (html5QrcodeScanner) {
-                    html5QrcodeScanner.clear().then(() => {
-                        readerElement.classList.add('hidden');
-                    });
+                if (currentUser.role === 'Admin') {
+                    createBtn.classList.remove('hidden');
                 } else {
-                    readerElement.classList.add('hidden');
+                    createBtn.classList.add('hidden');
+                }
+            } else {
+                userDisplay.classList.add('hidden');
+                loginBtn.classList.remove('hidden');
+                logoutBtn.classList.add('hidden');
+                createBtn.classList.add('hidden');
+            }
+        }
+
+        function openLoginModal() {
+            switchAuthMode('login');
+            document.getElementById('loginModal').classList.remove('hidden');
+        }
+
+        function openCreateUserModal() {
+            switchAuthMode('register');
+            document.getElementById('loginModal').classList.remove('hidden');
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.add('hidden');
+        }
+
+        function switchAuthMode(mode) {
+            const tabLogin = document.getElementById('authTabLogin');
+            const tabReg = document.getElementById('authTabRegister');
+            const formLogin = document.getElementById('authLoginForm');
+            const formReg = document.getElementById('authRegisterForm');
+
+            if (mode === 'login') {
+                tabLogin.className = "flex-1 py-2.5 text-center font-bold text-sm text-blue-600 border-b-2 border-blue-600";
+                tabReg.className = "hidden flex-1 py-2.5 text-center font-semibold text-sm text-gray-500 border-b-2 border-transparent hover:text-gray-700";
+                formLogin.classList.remove('hidden');
+                formReg.classList.add('hidden');
+            } else {
+                tabReg.className = "flex-1 py-2.5 text-center font-bold text-sm text-blue-600 border-b-2 border-blue-600";
+                tabLogin.className = "flex-1 py-2.5 text-center font-semibold text-sm text-gray-500 border-b-2 border-transparent hover:text-gray-700";
+                formReg.classList.remove('hidden');
+                formLogin.classList.add('hidden');
+
+                if (!currentUser || currentUser.role !== 'Admin') {
+                    document.getElementById('regAdminWarning').classList.remove('hidden');
+                } else {
+                    document.getElementById('regAdminWarning').classList.add('hidden');
                 }
             }
         }
 
-        function exportToCSV(todayOnly = false) {
-            let logsToExport = attendanceLogs;
-            
-            if (todayOnly) {
-                const todayStr = getLocalDateString();
-                logsToExport = attendanceLogs.filter(r => r.date === todayStr);
+        function fillPresetCredentials(user, pass) {
+            document.getElementById('loginUsername').value = user;
+            document.getElementById('loginPassword').value = pass;
+        }
+
+        function handleUserLogin() {
+            const u = document.getElementById('loginUsername').value.trim();
+            const p = document.getElementById('loginPassword').value.trim();
+
+            const found = registeredUsers.find(user => user.username.toLowerCase() === u.toLowerCase() && user.password === p);
+
+            if (found) {
+                currentUser = { username: found.username, name: found.name, role: found.role };
+                saveToLocalStorage();
+                updateUserUI();
+                closeLoginModal();
+                alert(`Logged in successfully as ${found.name} (${found.role})`);
             } else {
-                const filterDate = document.getElementById('historyFilterDate').value;
-                const searchQuery = document.getElementById('historySearchQuery').value.toLowerCase().trim();
-                const filterType = document.getElementById('historyFilterType').value;
-                const filterDept = document.getElementById('historyFilterDept').value;
-
-                if (filterDate) logsToExport = logsToExport.filter(r => r.date === filterDate);
-                if (searchQuery) logsToExport = logsToExport.filter(r => r.name.toLowerCase().includes(searchQuery) || r.id.toLowerCase().includes(searchQuery));
-                if (filterType !== 'ALL') logsToExport = logsToExport.filter(r => (r.type || 'Regular') === filterType);
-                if (filterDept !== 'ALL') {
-                    logsToExport = logsToExport.filter(r => workers[r.id] && workers[r.id].dept === filterDept);
-                }
+                const err = document.getElementById('loginErrorMsg');
+                err.textContent = "Invalid username or password!";
+                err.classList.remove('hidden');
             }
+        }
 
-            if (logsToExport.length === 0) {
-                alert("No records available to export!");
+        function handleUserRegistration() {
+            if (!currentUser || currentUser.role !== 'Admin') {
+                alert("Access Denied: Only Admin users can create new accounts.");
                 return;
             }
 
-            let csv = "Date,Worker ID,Name,Type,Agency,In Time,Out Time,Total Hours,Overtime Hours,Logged By / Modified By,Manual OT Override,Status\n";
-            logsToExport.forEach(r => {
-                const loggedByUser = r.modifiedBy || r.completedBy || r.createdBy || 'System Auto Scan';
-                csv += `"${r.date}","${r.id}","${r.name}","${r.type || 'Regular'}","${r.agency || '-'}","${r.inTime}","${r.outTime || ''}","${r.totalHours}","${r.otHours}","${loggedByUser}","${r.manualOT ? 'YES' : 'NO'}","${r.status}"\n`;
-            });
+            const name = document.getElementById('regDisplayName').value.trim();
+            const u = document.getElementById('regUsername').value.trim();
+            const p = document.getElementById('regPassword').value.trim();
+            const role = document.getElementById('regUserRole').value;
 
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
-            link.setAttribute("download", `Worker_Attendance_${todayOnly ? 'Today' : 'Export'}_${getLocalDateString()}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            if (!name || !u || !p) {
+                const err = document.getElementById('regErrorMsg');
+                err.textContent = "Please fill in all user account fields.";
+                err.classList.remove('hidden');
+                return;
+            }
+
+            registeredUsers.push({ username: u, password: p, name, role });
+            saveToLocalStorage();
+            closeLoginModal();
+            alert(`User account for ${name} (${role}) created successfully!`);
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            saveToLocalStorage();
+            updateUserUI();
+            alert("Logged out successfully.");
         }
     </script>
 </body>
