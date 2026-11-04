@@ -60,7 +60,7 @@
 
     <!-- Header -->
     <header class="bg-blue-700 text-white shadow-md sticky top-0 z-30 no-print">
-        <div class="max-w-7xl mx-auto px-4 py-2 flex flex-wrap justify-between items-center gap-2">
+        <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap justify-between items-center gap-2">
             <div class="flex items-center gap-2 sm:gap-3">
                 <h1 class="text-base sm:text-xl font-bold tracking-wide flex items-center gap-1.5">
                     <span>👷</span> Worker Attendance & OT
@@ -80,28 +80,29 @@
                         <span class="text-blue-300">|</span>
                         <span id="userNameDisplay" class="max-w-[100px] truncate">Admin User</span>
                     </div>
-                    <button id="createUserHeaderBtn" onclick="openCreateUserModal()" class="hidden bg-emerald-500 hover:bg-emerald-600 text-blue-950 font-bold text-xs px-2.5 py-1 rounded transition shadow-sm flex items-center gap-1">
+                    <button id="createUserHeaderBtn" onclick="openCreateUserModal()" class="hidden bg-emerald-500 hover:bg-emerald-600 text-blue-950 font-bold text-xs px-2.5 py-1.5 rounded transition shadow-sm flex items-center gap-1">
                         ⚙️ <span>Users & Accounts</span>
                     </button>
-                    <button id="loginHeaderBtn" onclick="openLoginModal()" class="bg-amber-500 hover:bg-amber-600 text-blue-950 font-bold text-xs px-2.5 py-1 rounded transition shadow-sm flex items-center gap-1">
+                    <button id="loginHeaderBtn" onclick="openLoginModal()" class="bg-amber-500 hover:bg-amber-600 text-blue-950 font-bold text-xs px-2.5 py-1.5 rounded transition shadow-sm flex items-center gap-1">
                         🔑 <span>Log In</span>
                     </button>
-                    <button id="logoutHeaderBtn" onclick="handleLogout()" class="hidden bg-red-600 hover:bg-red-700 text-white font-medium text-xs px-2 py-1 rounded transition">
+                    <button id="logoutHeaderBtn" onclick="handleLogout()" class="hidden bg-red-600 hover:bg-red-700 text-white font-medium text-xs px-2.5 py-1.5 rounded transition">
                         🚪 Logout
                     </button>
                 </div>
             </div>
         </div>
 
-        <div class="bg-blue-800 px-4 py-1 border-t border-blue-600">
-            <div class="max-w-7xl mx-auto flex gap-2 overflow-x-auto no-scrollbar text-xs font-medium">
-                <button id="tabBtnDaily" onclick="switchTab('daily')" class="px-3 py-1.5 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition">
+        <!-- 3D Large Tab Navigation Bar -->
+        <div class="bg-blue-800 px-4 py-2.5 border-t border-blue-600 shadow-inner">
+            <div class="max-w-7xl mx-auto flex gap-3 overflow-x-auto no-scrollbar text-sm font-bold">
+                <button id="tabBtnDaily" onclick="switchTab('daily')" class="px-5 py-2.5 rounded-lg bg-white text-blue-900 shadow-[0_4px_0_#cbd5e1,0_6px_8px_rgba(0,0,0,0.15)] active:translate-y-1 active:shadow-[0_1px_0_#cbd5e1] transition-all whitespace-nowrap flex items-center gap-2">
                     📅 Daily Punch Log
                 </button>
-                <button id="tabBtnHistory" onclick="switchTab('history')" class="px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition">
+                <button id="tabBtnHistory" onclick="switchTab('history')" class="px-5 py-2.5 rounded-lg bg-blue-600 text-white shadow-[0_4px_0_#1e3a8a,0_6px_8px_rgba(0,0,0,0.2)] active:translate-y-1 active:shadow-[0_1px_0_#1e3a8a] transition-all whitespace-nowrap flex items-center gap-2 hover:bg-blue-500">
                     📜 History Logs
                 </button>
-                <button id="tabBtnDirectory" onclick="switchTab('directory')" class="px-3 py-2 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition">
+                <button id="tabBtnDirectory" onclick="switchTab('directory')" class="px-5 py-2.5 rounded-lg bg-blue-600 text-white shadow-[0_4px_0_#1e3a8a,0_6px_8px_rgba(0,0,0,0.2)] active:translate-y-1 active:shadow-[0_1px_0_#1e3a8a] transition-all whitespace-nowrap flex items-center gap-2 hover:bg-blue-500">
                     👥 Worker Directory & Badges
                 </button>
             </div>
@@ -325,10 +326,15 @@
                     </div>
 
                     <div class="bg-white rounded-lg shadow-sm p-3 border border-gray-200">
-                        <h2 class="text-xs font-bold text-gray-700 mb-2">➕ Register New Worker</h2>
+                        <div class="flex items-center justify-between mb-2">
+                            <h2 class="text-xs font-bold text-gray-700">➕ Register New Worker</h2>
+                            <button type="button" onclick="autoGenerateNewWorkerId()" class="text-[10px] bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded font-mono transition">
+                                ⚡ New Auto ID
+                            </button>
+                        </div>
                         <form id="addWorkerForm" onsubmit="registerWorker(event)" class="space-y-2">
                             <div class="grid grid-cols-2 gap-2">
-                                <input type="text" id="newWorkerId" placeholder="ID (Barcode)" required class="w-full border rounded p-1.5 text-xs font-mono">
+                                <input type="text" id="newWorkerId" placeholder="ID (Auto-Assigned)" required class="w-full border rounded p-1.5 text-xs font-mono bg-blue-50/50">
                                 <input type="text" id="newWorkerName" placeholder="Full Name" required class="w-full border rounded p-1.5 text-xs">
                             </div>
                             <div class="grid grid-cols-2 gap-2">
@@ -426,7 +432,7 @@
                         </div>
                     </div>
 
-                    <div class="hidden sm:block overflow-x-auto overflow-y-auto max-h-[calc(100vh-280px)]">
+                    <div class="hidden sm:block overflow-x-auto overflow-y-auto max-h-[calc(100vh-160px)] min-h-[500px]">
                         <table class="w-full text-left text-xs">
                             <thead class="bg-gray-100 text-gray-600 uppercase text-[10px] tracking-wider border-b sticky top-0 z-10">
                                 <tr>
@@ -450,7 +456,7 @@
                         </table>
                     </div>
 
-                    <div id="dailyMobileList" class="block sm:hidden divide-y divide-gray-200 max-h-[calc(100vh-320px)] overflow-y-auto">
+                    <div id="dailyMobileList" class="block sm:hidden divide-y divide-gray-200 max-h-[calc(100vh-200px)] min-h-[400px] overflow-y-auto">
                     </div>
                 </div>
             </div>
@@ -706,6 +712,34 @@
         let selectedWorkerForMod = null;
         let selectedWorkerForEdit = null;
 
+        // --- Auto-Generate Non-Duplicate Barcode ID ---
+        function getNextAvailableWorkerId() {
+            let maxNumericId = 1000;
+            Object.keys(workersDirectory).forEach(id => {
+                const match = id.match(/W?(\d+)/i);
+                if (match) {
+                    const num = parseInt(match[1], 10);
+                    if (!isNaN(num) && num > maxNumericId) {
+                        maxNumericId = num;
+                    }
+                }
+            });
+            let nextNum = maxNumericId + 1;
+            let candidateId = `W${nextNum}`;
+            while (workersDirectory[candidateId]) {
+                nextNum++;
+                candidateId = `W${nextNum}`;
+            }
+            return candidateId;
+        }
+
+        function autoGenerateNewWorkerId() {
+            const newIdInput = document.getElementById('newWorkerId');
+            if (newIdInput) {
+                newIdInput.value = getNextAvailableWorkerId();
+            }
+        }
+
         // --- Initialize App ---
         window.addEventListener('DOMContentLoaded', () => {
             initLiveClock();
@@ -738,6 +772,7 @@
                     workersDirectory = doc.data().data;
                     renderDirectoryTable();
                 }
+                autoGenerateNewWorkerId();
             }, (err) => console.error("Workers Firestore Error:", err));
 
             db.collection("attendanceApp").doc("attendanceLogs").onSnapshot((doc) => {
@@ -813,22 +848,25 @@
             document.getElementById('tabHistoryView').classList.add('hidden');
             document.getElementById('tabDirectoryView').classList.add('hidden');
 
-            document.getElementById('tabBtnDaily').className = "px-3 py-1.5 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition";
-            document.getElementById('tabBtnHistory').className = "px-3 py-1.5 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition";
-            document.getElementById('tabBtnDirectory').className = "px-3 py-1.5 rounded-md text-white hover:bg-blue-700 whitespace-nowrap transition";
+            const inactiveStyle = "px-5 py-2.5 rounded-lg bg-blue-600 text-white shadow-[0_4px_0_#1e3a8a,0_6px_8px_rgba(0,0,0,0.2)] active:translate-y-1 active:shadow-[0_1px_0_#1e3a8a] transition-all whitespace-nowrap flex items-center gap-2 hover:bg-blue-500";
+            const activeStyle = "px-5 py-2.5 rounded-lg bg-white text-blue-900 shadow-[0_4px_0_#cbd5e1,0_6px_8px_rgba(0,0,0,0.15)] active:translate-y-1 active:shadow-[0_1px_0_#cbd5e1] transition-all whitespace-nowrap flex items-center gap-2";
+
+            document.getElementById('tabBtnDaily').className = inactiveStyle;
+            document.getElementById('tabBtnHistory').className = inactiveStyle;
+            document.getElementById('tabBtnDirectory').className = inactiveStyle;
 
             if (tab === 'daily') {
                 document.getElementById('tabDailyView').classList.remove('hidden');
-                document.getElementById('tabBtnDaily').className = "px-3 py-1.5 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition";
+                document.getElementById('tabBtnDaily').className = activeStyle;
                 renderDailyTable();
             } else if (tab === 'history') {
                 document.getElementById('tabHistoryView').classList.remove('hidden');
-                document.getElementById('tabBtnHistory').className = "px-3 py-1.5 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition";
+                document.getElementById('tabBtnHistory').className = activeStyle;
                 populateDeptFilterDropdown();
                 renderHistoryTable();
             } else if (tab === 'directory') {
                 document.getElementById('tabDirectoryView').classList.remove('hidden');
-                document.getElementById('tabBtnDirectory').className = "px-3 py-1.5 rounded-md bg-white text-blue-800 font-semibold whitespace-nowrap transition";
+                document.getElementById('tabBtnDirectory').className = activeStyle;
                 renderDirectoryTable();
             }
         }
@@ -869,6 +907,7 @@
                 workersDirectory[cleanId] = worker;
                 saveToCloud();
                 renderDirectoryTable();
+                autoGenerateNewWorkerId();
             }
 
             const todayStr = getTodayDateString();
@@ -989,29 +1028,29 @@
                 const tr = document.createElement('tr');
                 tr.className = `hover:bg-slate-50 transition ${isChecked ? 'bg-blue-50/60' : ''}`;
                 tr.innerHTML = `
-                    <td class="py-2 px-3 text-center">
+                    <td class="py-2.5 px-3 text-center">
                         <input type="checkbox" value="${log.id}" ${isChecked ? 'checked' : ''} onchange="toggleDailyLogSelection('${log.id}', this.checked)" class="rounded text-blue-600 cursor-pointer">
                     </td>
-                    <td class="py-2 px-3 font-bold text-gray-700">${log.workerId}</td>
-                    <td class="py-2 px-3 font-semibold text-blue-900">${log.name}</td>
-                    <td class="py-2 px-3">
+                    <td class="py-2.5 px-3 font-bold text-gray-700">${log.workerId}</td>
+                    <td class="py-2.5 px-3 font-semibold text-blue-900">${log.name}</td>
+                    <td class="py-2.5 px-3">
                         <span class="px-1.5 py-0.5 text-[10px] rounded font-semibold ${log.type === 'Contractor' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}">
                             ${log.type}${log.agency ? ' (' + log.agency + ')' : ''}
                         </span>
                     </td>
-                    <td class="py-2 px-3 text-emerald-700 font-bold">${log.inTime}</td>
-                    <td class="py-2 px-3 text-purple-700 font-bold">${log.outTime || '--:--'}</td>
-                    <td class="py-2 px-3">${log.totalHours}h</td>
-                    <td class="py-2 px-3 font-bold ${parseFloat(log.otHours) > 0 ? 'text-purple-600' : 'text-gray-400'}">${log.otHours}h</td>
-                    <td class="py-2 px-3 text-gray-500">${log.loggedBy}</td>
-                    <td class="py-2 px-3">
+                    <td class="py-2.5 px-3 text-emerald-700 font-bold">${log.inTime}</td>
+                    <td class="py-2.5 px-3 text-purple-700 font-bold">${log.outTime || '--:--'}</td>
+                    <td class="py-2.5 px-3">${log.totalHours}h</td>
+                    <td class="py-2.5 px-3 font-bold ${parseFloat(log.otHours) > 0 ? 'text-purple-600' : 'text-gray-400'}">${log.otHours}h</td>
+                    <td class="py-2.5 px-3 text-gray-500">${log.loggedBy}</td>
+                    <td class="py-2.5 px-3">
                         <span class="px-2 py-0.5 rounded text-[10px] font-bold ${log.status === 'IN' ? 'bg-emerald-500 text-white animate-pulse' : 'bg-gray-200 text-gray-700'}">
                             ${log.status}
                         </span>
                     </td>
-                    <td class="py-2 px-3 text-right no-print space-x-1">
-                        <button onclick="openModifyOutTimeModal('${log.id}')" class="bg-purple-100 hover:bg-purple-200 text-purple-800 px-2 py-0.5 rounded text-[10px] font-semibold transition">✏️ Edit</button>
-                        <button onclick="deleteAttendanceLog('${log.id}')" class="bg-red-100 hover:bg-red-200 text-red-700 px-2 py-0.5 rounded text-[10px] font-semibold transition">🗑️ Delete</button>
+                    <td class="py-2.5 px-3 text-right no-print space-x-1">
+                        <button onclick="openModifyOutTimeModal('${log.id}')" class="bg-purple-100 hover:bg-purple-200 text-purple-800 px-2 py-1 rounded text-[10px] font-semibold transition">✏️ Edit</button>
+                        <button onclick="deleteAttendanceLog('${log.id}')" class="bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded text-[10px] font-semibold transition">🗑️ Delete</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -1264,6 +1303,7 @@
                 selectedDirWorkers.clear();
                 saveToCloud();
                 renderDirectoryTable();
+                autoGenerateNewWorkerId();
                 showAlert(`🗑️ Selected worker profiles deleted successfully.`, 'warning');
             }
         }
@@ -1323,6 +1363,7 @@
                 selectedDirWorkers.delete(workerId);
                 saveToCloud();
                 renderDirectoryTable();
+                autoGenerateNewWorkerId();
             }
         }
 
@@ -1384,6 +1425,13 @@
             const agency = document.getElementById('newWorkerAgency').value.trim();
 
             if (!id || !name) return;
+
+            // Strict Duplicate Barcode ID Check
+            if (workersDirectory[id]) {
+                triggerScanFeedback(true);
+                return alert(`⚠️ Duplicate Barcode ID Alert: Worker ID "${id}" is already registered to "${workersDirectory[id].name}". Please use a unique Barcode ID.`);
+            }
+
             const worker = { id, name, dept, type, agency };
             workersDirectory[id] = worker;
             saveToCloud();
@@ -1395,6 +1443,8 @@
 
             JsBarcode("#previewBarcodeSvg", id, { format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 12, margin: 2 });
             renderDirectoryTable();
+            autoGenerateNewWorkerId();
+            showAlert(`✅ Worker <strong>${name}</strong> (${id}) registered successfully!`, 'success');
         }
 
         function printSingleBadgeFromPreview() {
@@ -1496,30 +1546,46 @@
             reader.onload = function(e) {
                 const lines = e.target.result.split('\n');
                 let count = 0;
+                let skipped = 0;
                 for (let i = 1; i < lines.length; i++) {
                     const line = lines[i].trim();
                     if (!line) continue;
                     const cols = line.split(',').map(c => c.replace(/^"|"$/g, '').trim());
                     if (cols.length >= 2 && cols[0] && cols[1]) {
-                        workersDirectory[cols[0]] = { id: cols[0], name: cols[1], dept: cols[2] || 'General', type: cols[3] || 'Regular', agency: cols[4] || '' };
-                        count++;
+                        const id = cols[0];
+                        if (!workersDirectory[id]) {
+                            workersDirectory[id] = { id: id, name: cols[1], dept: cols[2] || 'General', type: cols[3] || 'Regular', agency: cols[4] || '' };
+                            count++;
+                        } else {
+                            skipped++;
+                        }
                     }
                 }
                 saveToCloud();
                 renderDirectoryTable();
-                alert(`Imported ${count} workers successfully!`);
+                autoGenerateNewWorkerId();
+                alert(`Imported ${count} new worker(s) successfully!${skipped > 0 ? ` (${skipped} existing duplicate ID(s) skipped)` : ''}`);
             };
             reader.readAsText(file);
         }
 
         function promptClearTodayRecords() {
             if (currentUser && currentUser.role !== 'Admin') return alert("Restricted: Admin only.");
-            if (confirm("Clear TODAY's attendance logs?")) {
+            if (confirm("Clear TODAY's attendance logs? (Historical logs will be preserved)")) {
                 const todayStr = getTodayDateString();
+                
+                // Keep only logs whose date is NOT equal to today's date
                 attendanceLogs = attendanceLogs.filter(l => l.date !== todayStr);
+                
                 selectedDailyLogs.clear();
                 saveToCloud();
                 renderDailyTable();
+                
+                // If history tab is open, refresh it so history remains untouched & visible
+                if (!document.getElementById('tabHistoryView').classList.contains('hidden')) {
+                    renderHistoryTable();
+                }
+                showAlert("⚠️ Today's attendance logs cleared. History logs remain safe.", "warning");
             }
         }
 
