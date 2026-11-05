@@ -1268,7 +1268,8 @@
 
                 setTimeout(() => {
                     try {
-                        JsBarcode(`#${svgId}`, worker.id, { format: "CODE128", width: 1.2, height: 30, displayValue: false, margin: 2 });
+                        // UPDATED: Increased width (1.8), height (35), and enabled displayValue for directory preview
+                        JsBarcode(`#${svgId}`, worker.id, { format: "CODE128", width: 1.8, height: 35, displayValue: true, fontSize: 9, margin: 2 });
                     } catch (e) {}
                 }, 10);
             });
@@ -1441,7 +1442,8 @@
             document.getElementById('badgeDept').textContent = `Dept: ${dept} | ID: ${id}`;
             document.getElementById('barcodePreviewCard').classList.remove('hidden');
 
-            JsBarcode("#previewBarcodeSvg", id, { format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 12, margin: 2 });
+            // UPDATED: Increased width (2.2), height (45) for quick scanning on preview card
+            JsBarcode("#previewBarcodeSvg", id, { format: "CODE128", width: 2.2, height: 45, displayValue: true, fontSize: 11, margin: 2 });
             renderDirectoryTable();
             autoGenerateNewWorkerId();
             showAlert(`✅ Worker <strong>${name}</strong> (${id}) registered successfully!`, 'success');
@@ -1478,7 +1480,8 @@
                 container.appendChild(box);
                 setTimeout(() => {
                     try {
-                        JsBarcode(`#${svgId}`, w.id, { format: "CODE128", width: 1.3, height: 35, displayValue: true, fontSize: 10, margin: 0 });
+                        // UPDATED: Increased width (2.0), height (42) specifically tailored for 6x4cm physical badge printing
+                        JsBarcode(`#${svgId}`, w.id, { format: "CODE128", width: 2.0, height: 42, displayValue: true, fontSize: 10, margin: 1 });
                     } catch (e) {}
                 }, 10);
             });
