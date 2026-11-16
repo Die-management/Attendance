@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Worker Attendance & Overtime Tracker (Cloud Synced)</title>
+    <title>Worker Attendance, OT & Locker Management (Cloud Synced)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Html5-QRCode Library for Web Camera Scanner -->
@@ -49,7 +49,7 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-slate-100 text-gray-800 font-sans min-h-screen pb-4">
+<body class="bg-slate-100 text-gray-800 font-sans min-h-screen pb-6">
 
     <!-- Printable Barcode Badge Area -->
     <div id="printBadgeArea" class="print-only p-2">
@@ -58,12 +58,30 @@
         </div>
     </div>
 
+    <!-- Custom Notification Toast / Message Box -->
+    <div id="appToast" class="fixed bottom-5 right-5 z-50 hidden max-w-sm bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 text-xs font-medium flex items-center gap-2.5 transition-all">
+        <span id="appToastIcon" class="text-base">ℹ️</span>
+        <span id="appToastText">Notification</span>
+    </div>
+
+    <!-- Custom Confirmation Modal (Replaces native confirm/alert) -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl p-5 max-w-sm w-full shadow-2xl border border-gray-200">
+            <h3 id="confirmModalTitle" class="text-base font-bold text-gray-800 mb-1.5">Confirm Action</h3>
+            <p id="confirmModalMessage" class="text-xs text-gray-600 mb-4 leading-relaxed"></p>
+            <div class="flex justify-end gap-2">
+                <button id="confirmModalCancelBtn" onclick="closeConfirmModal()" class="px-3.5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded-lg transition">Cancel</button>
+                <button id="confirmModalOkBtn" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Header -->
     <header class="bg-blue-700 text-white shadow-md sticky top-0 z-30 no-print">
         <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap justify-between items-center gap-2">
             <div class="flex items-center gap-2 sm:gap-3">
                 <h1 class="text-base sm:text-xl font-bold tracking-wide flex items-center gap-1.5">
-                    <span>👷</span> Worker Attendance & OT
+                    <span>👷</span> Worker Attendance, OT & Lockers
                 </h1>
                 <span id="syncStatus" class="bg-blue-900 text-blue-200 text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1 font-mono">
                     <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse" id="syncStatusDot"></span>
@@ -104,6 +122,9 @@
                 </button>
                 <button id="tabBtnDirectory" onclick="switchTab('directory')" class="px-5 py-2.5 rounded-lg bg-blue-600 text-white shadow-[0_4px_0_#1e3a8a,0_6px_8px_rgba(0,0,0,0.2)] active:translate-y-1 active:shadow-[0_1px_0_#1e3a8a] transition-all whitespace-nowrap flex items-center gap-2 hover:bg-blue-500">
                     👥 Worker Directory & Badges
+                </button>
+                <button id="tabBtnLockers" onclick="switchTab('lockers')" class="px-5 py-2.5 rounded-lg bg-blue-600 text-white shadow-[0_4px_0_#1e3a8a,0_6px_8px_rgba(0,0,0,0.2)] active:translate-y-1 active:shadow-[0_1px_0_#1e3a8a] transition-all whitespace-nowrap flex items-center gap-2 hover:bg-blue-500">
+                    🔐 Locker Management
                 </button>
             </div>
         </div>
@@ -180,8 +201,8 @@
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1">User Role & Privileges</label>
                     <select id="regUserRole" class="w-full border rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option value="Supervisor">Supervisor (Log Punch, Edit Out Time)</option>
-                        <option value="Admin">Admin (Full Access, Manage Users & Clear Logs)</option>
+                        <option value="Supervisor">Supervisor (Log Punch, Edit Out Time, Assign/Vacate Lockers)</option>
+                        <option value="Admin">Admin (Full Access, Manage Users, Clear Logs & Bulk Delete)</option>
                     </select>
                 </div>
 
@@ -251,11 +272,11 @@
         </div>
     </div>
 
-    <!-- Modal 3: Edit Worker Profile -->
+    <!-- Modal 3: Edit Worker Profile & Locker Assignment -->
     <div id="editWorkerModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white rounded-xl p-5 max-w-sm w-full shadow-2xl border border-gray-200 relative">
+        <div class="bg-white rounded-xl p-5 max-w-sm w-full shadow-2xl border border-gray-200 relative max-h-[90vh] overflow-y-auto">
             <button onclick="closeEditWorkerModal()" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-lg font-bold">&times;</button>
-            <h3 class="text-base font-bold text-gray-800 mb-1">✏️ Edit Worker Profile</h3>
+            <h3 class="text-base font-bold text-gray-800 mb-1">✏️ Edit Worker Profile & Locker</h3>
             <p id="editWorkerIdLabel" class="text-xs text-blue-700 font-mono font-semibold mb-3"></p>
             
             <div class="space-y-3 text-xs mb-4">
@@ -268,6 +289,10 @@
                     <input type="text" id="editWorkerDeptInput" class="w-full border rounded-lg p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
                 <div>
+                    <label class="block text-gray-700 font-semibold mb-1">Mobile Number (Optional):</label>
+                    <input type="text" id="editWorkerMobileInput" placeholder="e.g. 9876543210" class="w-full border rounded-lg p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
                     <label class="block text-gray-700 font-semibold mb-1">Worker Type:</label>
                     <select id="editWorkerTypeInput" onchange="toggleEditContractorInput()" class="w-full border rounded-lg p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         <option value="Regular">Regular</option>
@@ -278,11 +303,95 @@
                     <label class="block text-gray-700 font-semibold mb-1">Contractor Company Name:</label>
                     <input type="text" id="editWorkerAgencyInput" class="w-full border rounded-lg p-2 text-sm bg-amber-50 border-amber-200 outline-none">
                 </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-1">Assigned Locker:</label>
+                    <select id="editWorkerLockerSelect" class="w-full border rounded-lg p-2 text-sm bg-indigo-50 border-indigo-200 text-indigo-950 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="">-- No Locker Assigned --</option>
+                    </select>
+                </div>
             </div>
 
             <div class="flex gap-2 justify-end">
                 <button onclick="closeEditWorkerModal()" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded-lg transition">Cancel</button>
                 <button onclick="saveEditedWorker()" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 4: Assign Locker Modal -->
+    <div id="assignLockerModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl border border-gray-200 relative">
+            <button onclick="closeAssignLockerModal()" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            <h3 class="text-base font-bold text-gray-800 mb-1 flex items-center gap-1.5">
+                <span>🔐</span> Assign Locker to Worker
+            </h3>
+            <p class="text-xs text-gray-500 mb-4">Select an available locker and an unassigned worker from the directory.</p>
+
+            <div class="space-y-3 text-xs mb-5">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-1">1. Select Available Locker:</label>
+                    <select id="assignModalLockerSelect" class="w-full border border-indigo-300 rounded-lg p-2.5 text-sm bg-indigo-50/50 font-mono font-bold text-indigo-900 focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-1">2. Select Unassigned Worker:</label>
+                    <input type="text" id="assignModalWorkerFilter" oninput="filterAssignWorkerOptions()" placeholder="Type worker name or ID to filter..." class="w-full border rounded-lg p-2 text-xs mb-1.5 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none">
+                    <select id="assignModalWorkerSelect" class="w-full border rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button onclick="closeAssignLockerModal()" class="px-3.5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded-lg transition">Cancel</button>
+                <button onclick="confirmLockerAssignment()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition shadow-sm">✅ Assign Locker</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 5: Bulk Add Locker Range Modal -->
+    <div id="bulkLockerRangeModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl border border-gray-200 relative">
+            <button onclick="closeBulkLockerRangeModal()" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            <h3 class="text-base font-bold text-gray-800 mb-1 flex items-center gap-1.5">
+                <span>📦</span> Bulk Add Locker Range
+            </h3>
+            <p class="text-xs text-gray-500 mb-4">Generate up to 1,000 sequential lockers at once and sync to Cloud Firestore.</p>
+
+            <div class="grid grid-cols-2 gap-3 text-xs mb-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-1">Prefix (e.g. L-):</label>
+                    <input type="text" id="bulkLockerPrefix" value="L-" placeholder="L-" class="w-full border rounded-lg p-2 text-sm font-mono">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-1">Zero Padding Digits:</label>
+                    <select id="bulkLockerPad" class="w-full border rounded-lg p-2 text-sm bg-white">
+                        <option value="3" selected>3 Digits (L-001)</option>
+                        <option value="2">2 Digits (L-01)</option>
+                        <option value="0">No Padding (L-1)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-1">Start Number:</label>
+                    <input type="number" id="bulkLockerStart" value="1" min="0" class="w-full border rounded-lg p-2 text-sm font-mono">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-1">End Number:</label>
+                    <input type="number" id="bulkLockerEnd" value="50" min="1" class="w-full border rounded-lg p-2 text-sm font-mono">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-gray-700 font-semibold mb-1">Location / Changing Area:</label>
+                    <select id="bulkLockerLocation" class="w-full border rounded-lg p-2 text-sm bg-white">
+                        <option value="Changing Room">Changing Room</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button onclick="closeBulkLockerRangeModal()" class="px-3.5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded-lg transition">Cancel</button>
+                <button onclick="confirmBulkLockerRange()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition">⚡ Generate & Sync Lockers</button>
             </div>
         </div>
     </div>
@@ -313,15 +422,21 @@
                 </div>
 
                 <div class="grid grid-cols-1 gap-3">
-                    <div class="bg-white rounded-lg shadow-sm p-3 border border-gray-200">
+                    <div class="bg-white rounded-lg shadow-sm p-3 border border-gray-200 space-y-2">
                         <div class="flex items-center justify-between gap-2">
                             <label class="text-xs font-semibold text-gray-700 flex items-center gap-1">
                                 ⚙️ Shift Overtime Rule (Hrs):
                             </label>
                             <input type="number" id="shiftHours" value="8" min="1" max="24" class="w-16 border rounded p-1 text-xs text-center font-bold focus:ring-2 focus:ring-blue-500 outline-none" onchange="recalculateAllOT()">
                         </div>
-                        <p class="text-[10px] text-gray-500 mt-1.5 bg-amber-50 p-1.5 rounded border border-amber-200 leading-tight">
-                            ⚡ OT applies if work time exceeds shift by <strong>30+ mins</strong> (&ge;8.5h).
+                        <div class="flex items-center justify-between gap-2 pt-1 border-t border-gray-100">
+                            <label class="text-[11px] font-medium text-gray-600">
+                                Allow OT if under 30 mins:
+                            </label>
+                            <input type="checkbox" id="allowUnder30OT" onchange="recalculateAllOT()" class="rounded text-blue-600 cursor-pointer w-4 h-4">
+                        </div>
+                        <p class="text-[10px] text-gray-500 bg-amber-50 p-1.5 rounded border border-amber-200 leading-tight">
+                            ⚡ OT triggers after shift. If enabled, exact excess time is counted; otherwise requires 30+ mins to start accumulating (non-rounded).
                         </p>
                     </div>
 
@@ -342,6 +457,12 @@
                                 <select id="newWorkerType" class="w-full border rounded p-1.5 text-xs bg-white" onchange="toggleContractorInput()">
                                     <option value="Regular">Regular</option>
                                     <option value="Contractor">Contractor</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" id="newWorkerMobile" placeholder="Mobile (Optional)" class="w-full border rounded p-1.5 text-xs">
+                                <select id="newWorkerLocker" class="w-full border rounded p-1.5 text-xs bg-indigo-50/60 border-indigo-200 text-indigo-950 font-medium">
+                                    <option value="">🔐 Locker (Optional)</option>
                                 </select>
                             </div>
                             <div id="agencyInputGroup" class="hidden">
@@ -370,22 +491,30 @@
             </div>
 
             <div class="lg:col-span-8 space-y-3">
-                <div id="scanAlert" class="hidden p-2 rounded-lg border font-medium text-xs transition-all duration-300"></div>
+                <div id="scanAlert" class="hidden p-2.5 rounded-lg border font-medium text-xs transition-all duration-300"></div>
 
-                <div class="grid grid-cols-2 gap-3 no-print">
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 no-print">
                     <div class="bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded-xl shadow-md p-3.5 border border-blue-900 flex items-center justify-between">
                         <div>
                             <span class="text-[11px] uppercase tracking-wider font-semibold text-blue-200 block">Workers Present</span>
                             <span class="text-2xl sm:text-3xl font-extrabold font-mono" id="topBlockPresent">0</span>
                         </div>
-                        <div class="text-3xl bg-blue-500/30 p-2 rounded-lg">👷</div>
+                        <div class="text-2xl sm:text-3xl bg-blue-500/30 p-2 rounded-lg">👷</div>
                     </div>
+                    <!-- Updated Top Block to Show Count of OT Workers instead of Total Time -->
                     <div class="bg-gradient-to-br from-purple-600 to-purple-800 text-white rounded-xl shadow-md p-3.5 border border-purple-900 flex items-center justify-between">
                         <div>
-                            <span class="text-[11px] uppercase tracking-wider font-semibold text-purple-200 block">Total OT Hours</span>
-                            <span class="text-2xl sm:text-3xl font-extrabold font-mono"><span id="topBlockOT">0.00</span><span class="text-sm font-normal">h</span></span>
+                            <span class="text-[11px] uppercase tracking-wider font-semibold text-purple-200 block">OT Workers (≥ 8:30)</span>
+                            <span class="text-2xl sm:text-3xl font-extrabold font-mono" id="topBlockOT">0</span>
                         </div>
-                        <div class="text-3xl bg-purple-500/30 p-2 rounded-lg">⏱️</div>
+                        <div class="text-2xl sm:text-3xl bg-purple-500/30 p-2 rounded-lg">⏱️</div>
+                    </div>
+                    <div onclick="switchTab('lockers')" class="col-span-2 sm:col-span-1 cursor-pointer bg-gradient-to-br from-indigo-600 to-indigo-800 text-white rounded-xl shadow-md p-3.5 border border-indigo-900 flex items-center justify-between hover:brightness-105 transition">
+                        <div>
+                            <span class="text-[11px] uppercase tracking-wider font-semibold text-indigo-200 block">Lockers Free / Total</span>
+                            <span class="text-2xl sm:text-3xl font-extrabold font-mono" id="topBlockLockers">0/0</span>
+                        </div>
+                        <div class="text-2xl sm:text-3xl bg-indigo-500/30 p-2 rounded-lg">🔐</div>
                     </div>
                 </div>
 
@@ -428,7 +557,7 @@
                             <div><span class="text-gray-500">Present:</span> <strong id="statPresent" class="text-blue-600 font-bold">0</strong></div>
                             <div><span class="text-gray-500">Contractors:</span> <strong id="statContractors" class="text-amber-600 font-bold">0</strong></div>
                             <div><span class="text-gray-500">Completed:</span> <strong id="statCompleted" class="text-emerald-600 font-bold">0</strong></div>
-                            <div><span class="text-gray-500">OT:</span> <strong id="statTotalOT" class="text-purple-600 font-bold">0.00</strong>h</div>
+                            <div><span class="text-gray-500">OT Workers (≥8:30):</span> <strong id="statTotalOT" class="text-purple-600 font-bold">0</strong></div>
                         </div>
                     </div>
 
@@ -441,11 +570,12 @@
                                     </th>
                                     <th class="py-2 px-3">Worker ID</th>
                                     <th class="py-2 px-3">Name</th>
+                                    <th class="py-2 px-3">Locker</th>
                                     <th class="py-2 px-3">Type</th>
                                     <th class="py-2 px-3">In Time</th>
                                     <th class="py-2 px-3">Out Time</th>
-                                    <th class="py-2 px-3">Total Hrs</th>
-                                    <th class="py-2 px-3">OT (Hrs)</th>
+                                    <th class="py-2 px-3">Total Time</th>
+                                    <th class="py-2 px-3">OT (HH:MM)</th>
                                     <th class="py-2 px-3">Logged By</th>
                                     <th class="py-2 px-3">Status</th>
                                     <th class="py-2 px-3 text-right no-print">Actions</th>
@@ -518,11 +648,12 @@
                                 <th class="py-3 px-4">Date</th>
                                 <th class="py-3 px-4">Worker ID</th>
                                 <th class="py-3 px-4">Name</th>
+                                <th class="py-3 px-4">Locker</th>
                                 <th class="py-3 px-4">Type / Contractor</th>
                                 <th class="py-3 px-4">In Time</th>
                                 <th class="py-3 px-4">Out Time</th>
-                                <th class="py-3 px-4">Total Hrs</th>
-                                <th class="py-3 px-4">OT (Hrs)</th>
+                                <th class="py-3 px-4">Total Time</th>
+                                <th class="py-3 px-4">OT (HH:MM)</th>
                                 <th class="py-3 px-4">Logged By</th>
                                 <th class="py-3 px-4">Status</th>
                                 <th class="py-3 px-4 text-right">Actions</th>
@@ -545,7 +676,7 @@
                     📂 Batch Import Workers via CSV
                 </h3>
                 <p class="text-xs text-gray-500 mb-3">
-                    Upload a CSV file with columns: <strong>ID, Name, Department, Type, Agency</strong> to bulk sync profiles to Cloud Firestore.
+                    Upload a CSV file with columns: <strong>ID, Name, Department, Type, Agency, Mobile</strong> to bulk sync profiles to Cloud Firestore.
                 </p>
                 <div class="flex flex-wrap items-center gap-3">
                     <input type="file" id="csvFileInput" accept=".csv" class="block text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer border rounded-lg">
@@ -562,7 +693,7 @@
                 <div class="p-4 sm:p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-3">
                     <div>
                         <h2 class="text-base sm:text-lg font-semibold text-gray-800">👥 Master Worker Directory & Badges</h2>
-                        <p class="text-xs text-gray-500">Manage registered workers, edit profiles, delete worker records, and print exact 6cm x 4cm barcode badges.</p>
+                        <p class="text-xs text-gray-500">Manage registered workers, assigned lockers, edit profiles, delete records, and print exact 6cm × 4cm barcode badges.</p>
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <button onclick="deleteSelectedDirWorkers()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1 shadow-sm">
@@ -578,7 +709,7 @@
                 </div>
 
                 <div class="p-3 sm:p-4 bg-slate-50 border-b border-gray-200 flex flex-wrap gap-3 text-xs">
-                    <input type="text" id="dirSearchInput" oninput="renderDirectoryTable()" placeholder="Filter worker name, barcode ID..." class="border rounded-lg p-2 flex-1 min-w-[200px]">
+                    <input type="text" id="dirSearchInput" oninput="renderDirectoryTable()" placeholder="Filter worker name, barcode ID, mobile, or locker..." class="border rounded-lg p-2 flex-1 min-w-[200px]">
                     <select id="dirTypeFilter" onchange="renderDirectoryTable()" class="border rounded-lg p-2 bg-white">
                         <option value="ALL">All Types</option>
                         <option value="Regular">Regular Only</option>
@@ -597,7 +728,8 @@
                                 <th class="py-3 px-4">Worker Name</th>
                                 <th class="py-3 px-4">Department</th>
                                 <th class="py-3 px-4">Worker Type</th>
-                                <th class="py-3 px-4">Agency / Company</th>
+                                <th class="py-3 px-4">Mobile / Agency</th>
+                                <th class="py-3 px-4">Assigned Locker</th>
                                 <th class="py-3 px-4 text-center">Barcode Preview</th>
                                 <th class="py-3 px-4 text-right">Actions</th>
                             </tr>
@@ -605,6 +737,157 @@
                         <tbody id="directoryTableBody" class="divide-y divide-gray-200 text-xs">
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: LOCKER MANAGEMENT -->
+        <div id="tabLockerView" class="hidden space-y-4 sm:space-y-6">
+            <!-- Locker KPI Stats Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-200 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-semibold text-gray-500 block">Total Lockers</span>
+                        <strong id="kpiTotalLockers" class="text-2xl sm:text-3xl font-extrabold text-slate-800 font-mono mt-1 block">0</strong>
+                    </div>
+                    <div class="text-3xl bg-slate-100 p-2.5 rounded-xl">🗄️</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-4 border border-emerald-200 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-semibold text-emerald-700 block">Assigned Lockers</span>
+                        <strong id="kpiAssignedLockers" class="text-2xl sm:text-3xl font-extrabold text-emerald-700 font-mono mt-1 block">0</strong>
+                    </div>
+                    <div class="text-3xl bg-emerald-50 p-2.5 rounded-xl">🔒</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-4 border border-blue-200 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-semibold text-blue-700 block">Available Lockers</span>
+                        <strong id="kpiFreeLockers" class="text-2xl sm:text-3xl font-extrabold text-blue-700 font-mono mt-1 block">0</strong>
+                    </div>
+                    <div class="text-3xl bg-blue-50 p-2.5 rounded-xl">🔓</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-4 border border-indigo-200 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-semibold text-indigo-700 block">Workers With Lockers</span>
+                        <strong id="kpiWorkersWithLockers" class="text-2xl sm:text-3xl font-extrabold text-indigo-700 font-mono mt-1 block">0</strong>
+                    </div>
+                    <div class="text-3xl bg-indigo-50 p-2.5 rounded-xl">👷</div>
+                </div>
+            </div>
+
+            <!-- Locker Sub-Navigation & Backup Toolbar -->
+            <div class="flex flex-wrap justify-between items-center gap-3 bg-white p-3 rounded-xl shadow-sm border border-gray-200">
+                <div class="flex gap-2">
+                    <button id="lockerSubBtnAlloc" onclick="switchLockerSubTab('allocations')" class="px-4 py-2 rounded-lg bg-indigo-700 text-white text-xs font-bold transition shadow-sm">
+                        📋 Locker Allocation Register
+                    </button>
+                    <button id="lockerSubBtnMaster" onclick="switchLockerSubTab('master')" class="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">
+                        🗄️ Locker Master Setup
+                    </button>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="downloadUnifiedBackup()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1">
+                        💾 Download JSON Backup
+                    </button>
+                    <button onclick="document.getElementById('restoreUnifiedFile').click()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1">
+                        📂 Restore JSON Backup
+                    </button>
+                    <input id="restoreUnifiedFile" type="file" accept=".json" hidden onchange="restoreUnifiedBackup(event)">
+                </div>
+            </div>
+
+            <!-- Sub-Tab A: Locker Allocation Register -->
+            <div id="lockerSubAllocView" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="p-4 sm:p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-3">
+                    <div>
+                        <h2 class="text-base sm:text-lg font-bold text-gray-800">📋 Locker Allocation Register</h2>
+                        <p class="text-xs text-gray-500">Assign lockers to registered workers, track availability, vacate lockers, or export register CSV.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="openAssignLockerModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg transition shadow-sm flex items-center gap-1.5">
+                            ➕ Assign Locker
+                        </button>
+                        <button onclick="exportLockerRegisterCSV()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1">
+                            📥 Export Locker CSV
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-3 sm:p-4 bg-slate-50 border-b border-gray-200 flex flex-wrap gap-3 text-xs">
+                    <input id="allocationSearch" type="search" placeholder="Search worker name, ID, department, location or locker no..." oninput="renderLockerAllocations()" class="border rounded-lg p-2 flex-1 min-w-[220px] bg-white">
+                    <select id="allocationFilter" onchange="renderLockerAllocations()" class="border rounded-lg p-2 bg-white font-semibold text-gray-700">
+                        <option value="all">All Lockers</option>
+                        <option value="assigned">Assigned Only</option>
+                        <option value="free">Available Only</option>
+                    </select>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-600 uppercase text-[11px] tracking-wider border-b">
+                            <tr>
+                                <th class="py-3 px-4">Locker No.</th>
+                                <th class="py-3 px-4">Location / Area</th>
+                                <th class="py-3 px-4">Worker Name</th>
+                                <th class="py-3 px-4">Employee ID</th>
+                                <th class="py-3 px-4">Department</th>
+                                <th class="py-3 px-4">Assigned On</th>
+                                <th class="py-3 px-4">Status</th>
+                                <th class="py-3 px-4 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lockerAllocationRows" class="divide-y divide-gray-200 text-xs">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Sub-Tab B: Locker Master Setup -->
+            <div id="lockerSubMasterView" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="p-4 sm:p-5 border-b border-gray-200 flex flex-wrap justify-between items-center gap-3">
+                    <div>
+                        <h2 class="text-base sm:text-lg font-bold text-gray-800">🗄️ Locker Master Setup</h2>
+                        <p class="text-xs text-gray-500">Create individual lockers or generate sequential locker ranges synced to Cloud Firestore.</p>
+                    </div>
+                    <button onclick="openBulkLockerRangeModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg transition shadow-sm flex items-center gap-1.5">
+                        📦 Bulk Add Range (e.g. L-001 to L-200)
+                    </button>
+                </div>
+
+                <div class="p-3 sm:p-4 bg-slate-50 border-b border-gray-200 flex flex-wrap gap-2.5 text-xs items-center">
+                    <input id="newLockerNoInput" type="text" placeholder="Locker No. (e.g. L-001)" class="border rounded-lg p-2 font-mono bg-white min-w-[160px]">
+                    <select id="newLockerLocationSelect" class="border rounded-lg p-2 bg-white">
+                        <option value="Changing Room">Changing Room</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <button onclick="addSingleLocker()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg transition">
+                        ➕ Add Locker
+                    </button>
+                    <div class="flex-1"></div>
+                    <input id="lockerMasterSearch" type="search" placeholder="Search locker number or location..." oninput="renderLockerMasterTable()" class="border rounded-lg p-2 bg-white min-w-[200px]">
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-600 uppercase text-[11px] tracking-wider border-b">
+                            <tr>
+                                <th class="py-3 px-4">Locker No.</th>
+                                <th class="py-3 px-4">Location / Area</th>
+                                <th class="py-3 px-4">Status</th>
+                                <th class="py-3 px-4">Assigned Worker</th>
+                                <th class="py-3 px-4 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lockerMasterRows" class="divide-y divide-gray-200 text-xs">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="p-3 bg-amber-50 border-t border-amber-200 text-[11px] text-amber-800">
+                    💡 <strong>Rule:</strong> Each worker can hold one active locker at a time, and each locker can be assigned to only one worker. Occupied lockers cannot be deleted until vacated.
                 </div>
             </div>
         </div>
@@ -627,6 +910,37 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        // --- Custom Toast & Confirm Helpers (Zero native alert/confirm) ---
+        let toastTimeout = null;
+        function showToast(message, icon = 'ℹ️') {
+            const toastEl = document.getElementById('appToast');
+            document.getElementById('appToastIcon').textContent = icon;
+            document.getElementById('appToastText').textContent = message;
+            toastEl.classList.remove('hidden');
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => toastEl.classList.add('hidden'), 3200);
+        }
+
+        let confirmCallback = null;
+        function openConfirmModal(title, message, onConfirm, okBtnText = 'Confirm') {
+            document.getElementById('confirmModalTitle').textContent = title;
+            document.getElementById('confirmModalMessage').textContent = message;
+            const okBtn = document.getElementById('confirmModalOkBtn');
+            okBtn.textContent = okBtnText;
+            confirmCallback = onConfirm;
+            okBtn.onclick = () => {
+                const cb = confirmCallback;
+                closeConfirmModal();
+                if (cb) cb();
+            };
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            confirmCallback = null;
+        }
+
         // --- Enhanced Audio Beep & Mobile Vibration Feedback ---
         let audioCtx = null;
 
@@ -642,20 +956,18 @@
         }
 
         function triggerScanFeedback(isWarning = false) {
-            // Mobile Device Haptic Vibration Feedback
             if ("vibrate" in navigator) {
                 try {
                     if (isWarning) {
-                        navigator.vibrate(400); // Long single pulse for warning
+                        navigator.vibrate(400);
                     } else {
-                        navigator.vibrate([150, 50, 150]); // Double pulse for success
+                        navigator.vibrate([150, 50, 150]);
                     }
                 } catch (e) {
                     console.warn('Vibration API restricted:', e);
                 }
             }
 
-            // Loud Audio Beep Synthesizer (Web Audio API)
             try {
                 const ctx = getAudioContext();
                 if (!ctx) return;
@@ -675,10 +987,10 @@
                     osc.stop(ctx.currentTime + 0.35);
                 } else {
                     osc.type = 'sine';
-                    osc.frequency.setValueAtTime(1046.5, ctx.currentTime); // C6 pitch
-                    osc.frequency.setValueAtTime(1318.5, ctx.currentTime + 0.08); // E6 pitch step
+                    osc.frequency.setValueAtTime(1046.5, ctx.currentTime);
+                    osc.frequency.setValueAtTime(1318.5, ctx.currentTime + 0.08);
 
-                    gain.gain.setValueAtTime(0.85, ctx.currentTime); // Extra Loud Volume
+                    gain.gain.setValueAtTime(0.85, ctx.currentTime);
                     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
 
                     osc.connect(gain);
@@ -692,12 +1004,13 @@
         }
 
         // --- Application State ---
-        let workersDirectory = {}; 
+        let workersDirectory = {}; // { [workerId]: { id, name, dept, type, agency, mobile, lockerId, lockerAssignedOn } }
         let attendanceLogs = [];   
-        let lastScanTimes = {};    // Stores last scan timestamp per barcode ID for 5-minute cooldown
-        const SCAN_COOLDOWN_MS = 5 * 60 * 1000; // 5 Minutes in milliseconds
+        let lockersList = [];      // [{ id, no, location }]
+        let lastScanTimes = {};
+        const SCAN_COOLDOWN_MS = 5 * 60 * 1000;
 
-        let currentUser = { username: 'admin', name: 'Admin User', role: 'Admin' };
+        let currentUser = null;
         let registeredUsers = [
             { username: 'admin', password: 'admin123', name: 'System Admin', role: 'Admin' },
             { username: 'supervisor', password: 'super123', name: 'Site Supervisor', role: 'Supervisor' }
@@ -711,6 +1024,54 @@
         let isScannerRunning = false;
         let selectedWorkerForMod = null;
         let selectedWorkerForEdit = null;
+
+        // --- Locker Helper Functions ---
+        function getLockerById(lockerId) {
+            if (!lockerId) return null;
+            return lockersList.find(l => l.id === lockerId) || null;
+        }
+
+        function getAssignedWorkerForLocker(lockerId) {
+            return Object.values(workersDirectory).find(w => w.lockerId === lockerId) || null;
+        }
+
+        function getAvailableLockers() {
+            const occupiedIds = new Set(
+                Object.values(workersDirectory)
+                    .map(w => w.lockerId)
+                    .filter(Boolean)
+            );
+            return lockersList.filter(l => !occupiedIds.has(l.id));
+        }
+
+        function getWorkerLockerBadgeHtml(workerId) {
+            const w = workersDirectory[workerId];
+            if (!w || !w.lockerId) return '<span class="text-gray-400 text-[10px]">—</span>';
+            const locker = getLockerById(w.lockerId);
+            if (!locker) return '<span class="text-gray-400 text-[10px]">—</span>';
+            return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">🔐 ${escapeHtml(locker.no)}</span>`;
+        }
+
+        function escapeHtml(str) {
+            return String(str ?? '').replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        function populateNewWorkerLockerDropdown() {
+            const sel = document.getElementById('newWorkerLocker');
+            if (!sel) return;
+            const current = sel.value;
+            const free = getAvailableLockers();
+            sel.innerHTML = '<option value="">🔐 Locker (Optional)</option>';
+            free.forEach(l => {
+                const opt = document.createElement('option');
+                opt.value = l.id;
+                opt.textContent = `🔐 ${l.no} (${l.location})`;
+                sel.appendChild(opt);
+            });
+            if (free.some(l => l.id === current)) sel.value = current;
+        }
 
         // --- Auto-Generate Non-Duplicate Barcode ID ---
         function getNextAvailableWorkerId() {
@@ -746,8 +1107,14 @@
             updateSyncStatus('syncing', 'Connecting to Cloud Firestore...');
 
             const activeUser = localStorage.getItem('wt_active_user');
-            if (activeUser) currentUser = JSON.parse(activeUser);
+            if (activeUser) {
+                try { currentUser = JSON.parse(activeUser); } catch (e) {}
+            }
             updateUserUI();
+
+            if (!currentUser) {
+                openLoginModal();
+            }
 
             const todayStr = getTodayDateString();
             document.getElementById('currentDateDisplay').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -770,13 +1137,20 @@
             db.collection("attendanceApp").doc("workersDirectory").onSnapshot((doc) => {
                 if (doc.exists && doc.data().data) {
                     workersDirectory = doc.data().data;
-                    renderDirectoryTable();
                 }
+                refreshAllUI();
                 autoGenerateNewWorkerId();
             }, (err) => console.error("Workers Firestore Error:", err));
 
+            db.collection("attendanceApp").doc("lockers").onSnapshot((doc) => {
+                if (doc.exists && Array.isArray(doc.data().data)) {
+                    lockersList = doc.data().data;
+                }
+                refreshAllUI();
+            }, (err) => console.error("Lockers Firestore Error:", err));
+
             db.collection("attendanceApp").doc("attendanceLogs").onSnapshot((doc) => {
-                if (doc.exists && doc.data().data) {
+                if (doc.exists && Array.isArray(doc.data().data)) {
                     attendanceLogs = doc.data().data;
                     renderDailyTable();
                     if (!document.getElementById('tabHistoryView').classList.contains('hidden')) {
@@ -790,7 +1164,7 @@
             });
 
             db.collection("attendanceApp").doc("registeredUsers").onSnapshot((doc) => {
-                if (doc.exists && doc.data().data) {
+                if (doc.exists && Array.isArray(doc.data().data)) {
                     registeredUsers = doc.data().data;
                 } else {
                     saveToCloud();
@@ -798,11 +1172,24 @@
             });
         });
 
+        function refreshAllUI() {
+            populateNewWorkerLockerDropdown();
+            updateLockerKPIs();
+            renderDailyTable();
+            renderDirectoryTable();
+            renderLockerAllocations();
+            renderLockerMasterTable();
+            if (!document.getElementById('tabHistoryView').classList.contains('hidden')) {
+                renderHistoryTable();
+            }
+        }
+
         // --- Cloud Persistence ---
         function saveToCloud() {
             db.collection("attendanceApp").doc("workersDirectory").set({ data: workersDirectory });
             db.collection("attendanceApp").doc("attendanceLogs").set({ data: attendanceLogs });
             db.collection("attendanceApp").doc("registeredUsers").set({ data: registeredUsers });
+            db.collection("attendanceApp").doc("lockers").set({ data: lockersList });
 
             if (currentUser) {
                 localStorage.setItem('wt_active_user', JSON.stringify(currentUser));
@@ -847,6 +1234,7 @@
             document.getElementById('tabDailyView').classList.add('hidden');
             document.getElementById('tabHistoryView').classList.add('hidden');
             document.getElementById('tabDirectoryView').classList.add('hidden');
+            document.getElementById('tabLockerView').classList.add('hidden');
 
             const inactiveStyle = "px-5 py-2.5 rounded-lg bg-blue-600 text-white shadow-[0_4px_0_#1e3a8a,0_6px_8px_rgba(0,0,0,0.2)] active:translate-y-1 active:shadow-[0_1px_0_#1e3a8a] transition-all whitespace-nowrap flex items-center gap-2 hover:bg-blue-500";
             const activeStyle = "px-5 py-2.5 rounded-lg bg-white text-blue-900 shadow-[0_4px_0_#cbd5e1,0_6px_8px_rgba(0,0,0,0.15)] active:translate-y-1 active:shadow-[0_1px_0_#cbd5e1] transition-all whitespace-nowrap flex items-center gap-2";
@@ -854,6 +1242,7 @@
             document.getElementById('tabBtnDaily').className = inactiveStyle;
             document.getElementById('tabBtnHistory').className = inactiveStyle;
             document.getElementById('tabBtnDirectory').className = inactiveStyle;
+            document.getElementById('tabBtnLockers').className = inactiveStyle;
 
             if (tab === 'daily') {
                 document.getElementById('tabDailyView').classList.remove('hidden');
@@ -868,7 +1257,42 @@
                 document.getElementById('tabDirectoryView').classList.remove('hidden');
                 document.getElementById('tabBtnDirectory').className = activeStyle;
                 renderDirectoryTable();
+            } else if (tab === 'lockers') {
+                document.getElementById('tabLockerView').classList.remove('hidden');
+                document.getElementById('tabBtnLockers').className = activeStyle;
+                updateLockerKPIs();
+                renderLockerAllocations();
+                renderLockerMasterTable();
             }
+        }
+
+        function switchLockerSubTab(sub) {
+            const allocView = document.getElementById('lockerSubAllocView');
+            const masterView = document.getElementById('lockerSubMasterView');
+            const allocBtn = document.getElementById('lockerSubBtnAlloc');
+            const masterBtn = document.getElementById('lockerSubBtnMaster');
+
+            if (sub === 'allocations') {
+                allocView.classList.remove('hidden');
+                masterView.classList.add('hidden');
+                allocBtn.className = "px-4 py-2 rounded-lg bg-indigo-700 text-white text-xs font-bold transition shadow-sm";
+                masterBtn.className = "px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition";
+                renderLockerAllocations();
+            } else {
+                allocView.classList.add('hidden');
+                masterView.classList.remove('hidden');
+                masterBtn.className = "px-4 py-2 rounded-lg bg-indigo-700 text-white text-xs font-bold transition shadow-sm";
+                allocBtn.className = "px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition";
+                renderLockerMasterTable();
+            }
+        }
+
+        // --- Helper: Minutes to HH:MM format ---
+        function formatMinutesToHHMM(totalMinutes) {
+            if (isNaN(totalMinutes) || totalMinutes < 0) return "00:00";
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = Math.round(totalMinutes % 60);
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
         }
 
         // --- Core Punch & Cooldown Scan Logic ---
@@ -885,8 +1309,8 @@
                     const remainingSecs = Math.ceil((SCAN_COOLDOWN_MS - elapsed) / 1000);
                     const remainingMins = Math.ceil(remainingSecs / 60);
 
-                    triggerScanFeedback(true); // Warning beep & long vibrate
-                    showAlert(`⚠️ Duplicate scan ignored! Please wait ~${remainingMins} min(s) before scanning worker <strong>${cleanId}</strong> again.`, 'warning');
+                    triggerScanFeedback(true);
+                    showAlert(`⚠️ Duplicate scan ignored! Please wait ~${remainingMins} min(s) before scanning worker <strong>${escapeHtml(cleanId)}</strong> again.`, 'warning');
                     return;
                 }
             }
@@ -902,13 +1326,19 @@
                     name: `Worker ${cleanId}`,
                     dept: 'General',
                     type: 'Regular',
-                    agency: ''
+                    agency: '',
+                    mobile: '',
+                    lockerId: null,
+                    lockerAssignedOn: ''
                 };
                 workersDirectory[cleanId] = worker;
                 saveToCloud();
                 renderDirectoryTable();
                 autoGenerateNewWorkerId();
             }
+
+            const assignedLocker = getLockerById(worker.lockerId);
+            const lockerTag = assignedLocker ? ` • <span class="bg-indigo-700 text-white px-1.5 py-0.5 rounded font-mono">🔐 Locker: ${escapeHtml(assignedLocker.no)}</span>` : '';
 
             const todayStr = getTodayDateString();
             const currentTime = getCurrentTimeString();
@@ -925,24 +1355,24 @@
                     date: todayStr,
                     inTime: currentTime,
                     outTime: '',
-                    totalHours: '0.00',
-                    otHours: '0.00',
+                    totalMinutes: 0,
+                    otMinutes: 0,
                     loggedBy: currentUser ? currentUser.name : 'System',
                     status: 'IN'
                 };
                 attendanceLogs.unshift(newLog);
-                showAlert(`✅ IN Punch logged for <strong>${worker.name}</strong> at ${currentTime}`, 'success');
+                showAlert(`✅ IN Punch logged for <strong>${escapeHtml(worker.name)}</strong> at ${currentTime}${lockerTag}`, 'success');
             } else {
                 let log = attendanceLogs[logIndex];
                 if (!log.outTime) {
                     log.outTime = currentTime;
                     log.status = 'OUT';
                     calculateLogHours(log);
-                    showAlert(`🚪 OUT Punch logged for <strong>${worker.name}</strong> at ${currentTime} (Hrs: ${log.totalHours})`, 'purple');
+                    showAlert(`🚪 OUT Punch logged for <strong>${escapeHtml(worker.name)}</strong> at ${currentTime} (Time: ${formatMinutesToHHMM(log.totalMinutes)})${lockerTag}`, 'purple');
                 } else {
                     log.outTime = currentTime;
                     calculateLogHours(log);
-                    showAlert(`🔄 OUT Time updated for <strong>${worker.name}</strong> to ${currentTime}`, 'info');
+                    showAlert(`🔄 OUT Time updated for <strong>${escapeHtml(worker.name)}</strong> to ${currentTime}${lockerTag}`, 'info');
                 }
             }
 
@@ -954,29 +1384,43 @@
         }
 
         function calculateLogHours(log) {
-            if (!log.inTime || !log.outTime) {
-                log.totalHours = '0.00';
-                log.otHours = '0.00';
+            if (!log.inTime) {
+                log.totalMinutes = 0;
+                log.otMinutes = 0;
                 return;
             }
 
             const inParts = log.inTime.split(':').map(Number);
-            const outParts = log.outTime.split(':').map(Number);
-
             let inMinutes = inParts[0] * 60 + inParts[1];
-            let outMinutes = outParts[0] * 60 + outParts[1];
+            let outMinutes;
+
+            if (log.outTime) {
+                const outParts = log.outTime.split(':').map(Number);
+                outMinutes = outParts[0] * 60 + outParts[1];
+            } else {
+                // If currently punched IN, calculate duration up to the current time live
+                const now = new Date();
+                outMinutes = now.getHours() * 60 + now.getMinutes();
+            }
 
             if (outMinutes < inMinutes) outMinutes += 24 * 60;
 
             const diffMinutes = outMinutes - inMinutes;
-            const totalHrs = diffMinutes / 60;
-            log.totalHours = totalHrs.toFixed(2);
+            log.totalMinutes = diffMinutes;
 
             const shiftRuleHrs = parseFloat(document.getElementById('shiftHours').value) || 8;
-            if (totalHrs >= (shiftRuleHrs + 0.5)) {
-                log.otHours = (totalHrs - shiftRuleHrs).toFixed(2);
+            const shiftRuleMinutes = shiftRuleHrs * 60;
+            const allowUnder30 = document.getElementById('allowUnder30OT').checked;
+
+            if (diffMinutes > shiftRuleMinutes) {
+                const excessMinutes = diffMinutes - shiftRuleMinutes;
+                if (!allowUnder30 && excessMinutes < 30) {
+                    log.otMinutes = 0;
+                } else {
+                    log.otMinutes = excessMinutes;
+                }
             } else {
-                log.otHours = '0.00';
+                log.otMinutes = 0;
             }
         }
 
@@ -989,7 +1433,7 @@
 
         function showAlert(msg, type) {
             const alertEl = document.getElementById('scanAlert');
-            alertEl.className = `p-2 rounded-lg border font-medium text-xs transition-all duration-300 ${
+            alertEl.className = `p-2.5 rounded-lg border font-medium text-xs transition-all duration-300 ${
                 type === 'success' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
                 type === 'warning' ? 'bg-amber-100 text-amber-800 border-amber-300' :
                 type === 'purple' ? 'bg-purple-100 text-purple-800 border-purple-300' :
@@ -997,13 +1441,18 @@
             }`;
             alertEl.innerHTML = msg;
             alertEl.classList.remove('hidden');
-            setTimeout(() => alertEl.classList.add('hidden'), 4500);
+            setTimeout(() => alertEl.classList.add('hidden'), 5000);
         }
 
         function renderDailyTable() {
             const todayStr = getTodayDateString();
             const filterType = document.getElementById('dailyFilterType').value;
             const todayLogs = attendanceLogs.filter(l => l.date === todayStr && (filterType === 'ALL' || l.type === filterType));
+
+            // Continuously recalculate active IN workers durations for real-time tracking
+            todayLogs.forEach(l => {
+                if (l.status === 'IN') calculateLogHours(l);
+            });
 
             const tbody = document.getElementById('dailyTableBody');
             const mobileList = document.getElementById('dailyMobileList');
@@ -1013,7 +1462,7 @@
             let presentCount = 0;
             let contractorCount = 0;
             let completedCount = 0;
-            let totalOT = 0;
+            let otWorkersCount = 0; // Count of workers whose time >= 8:30 hours (510 minutes)
 
             document.getElementById('todayCountBadge').textContent = `${todayLogs.length} Logs`;
 
@@ -1021,9 +1470,16 @@
                 presentCount++;
                 if (log.type === 'Contractor') contractorCount++;
                 if (log.status === 'OUT') completedCount++;
-                totalOT += parseFloat(log.otHours || 0);
+                
+                // Check if working/worked time is >= 8 hours 30 mins (510 minutes)
+                if ((log.totalMinutes || 0) >= 510) {
+                    otWorkersCount++;
+                }
 
                 const isChecked = selectedDailyLogs.has(log.id);
+                const totalFormatted = formatMinutesToHHMM(log.totalMinutes || 0);
+                const otFormatted = formatMinutesToHHMM(log.otMinutes || 0);
+                const lockerBadge = getWorkerLockerBadgeHtml(log.workerId);
 
                 const tr = document.createElement('tr');
                 tr.className = `hover:bg-slate-50 transition ${isChecked ? 'bg-blue-50/60' : ''}`;
@@ -1031,21 +1487,22 @@
                     <td class="py-2.5 px-3 text-center">
                         <input type="checkbox" value="${log.id}" ${isChecked ? 'checked' : ''} onchange="toggleDailyLogSelection('${log.id}', this.checked)" class="rounded text-blue-600 cursor-pointer">
                     </td>
-                    <td class="py-2.5 px-3 font-bold text-gray-700">${log.workerId}</td>
-                    <td class="py-2.5 px-3 font-semibold text-blue-900">${log.name}</td>
+                    <td class="py-2.5 px-3 font-bold text-gray-700">${escapeHtml(log.workerId)}</td>
+                    <td class="py-2.5 px-3 font-semibold text-blue-900">${escapeHtml(log.name)}</td>
+                    <td class="py-2.5 px-3">${lockerBadge}</td>
                     <td class="py-2.5 px-3">
                         <span class="px-1.5 py-0.5 text-[10px] rounded font-semibold ${log.type === 'Contractor' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}">
-                            ${log.type}${log.agency ? ' (' + log.agency + ')' : ''}
+                            ${escapeHtml(log.type)}${log.agency ? ' (' + escapeHtml(log.agency) + ')' : ''}
                         </span>
                     </td>
-                    <td class="py-2.5 px-3 text-emerald-700 font-bold">${log.inTime}</td>
-                    <td class="py-2.5 px-3 text-purple-700 font-bold">${log.outTime || '--:--'}</td>
-                    <td class="py-2.5 px-3">${log.totalHours}h</td>
-                    <td class="py-2.5 px-3 font-bold ${parseFloat(log.otHours) > 0 ? 'text-purple-600' : 'text-gray-400'}">${log.otHours}h</td>
-                    <td class="py-2.5 px-3 text-gray-500">${log.loggedBy}</td>
+                    <td class="py-2.5 px-3 text-emerald-700 font-bold">${escapeHtml(log.inTime)}</td>
+                    <td class="py-2.5 px-3 text-purple-700 font-bold">${escapeHtml(log.outTime || '--:--')}</td>
+                    <td class="py-2.5 px-3">${totalFormatted}</td>
+                    <td class="py-2.5 px-3 font-bold ${(log.otMinutes || 0) > 0 ? 'text-purple-600' : 'text-gray-400'}">${otFormatted}</td>
+                    <td class="py-2.5 px-3 text-gray-500">${escapeHtml(log.loggedBy)}</td>
                     <td class="py-2.5 px-3">
                         <span class="px-2 py-0.5 rounded text-[10px] font-bold ${log.status === 'IN' ? 'bg-emerald-500 text-white animate-pulse' : 'bg-gray-200 text-gray-700'}">
-                            ${log.status}
+                            ${escapeHtml(log.status)}
                         </span>
                     </td>
                     <td class="py-2.5 px-3 text-right no-print space-x-1">
@@ -1059,18 +1516,19 @@
                 card.className = `p-3 bg-white space-y-1.5 text-xs ${isChecked ? 'border-l-4 border-l-blue-600 bg-blue-50/30' : ''}`;
                 card.innerHTML = `
                     <div class="flex justify-between items-center">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
                             <input type="checkbox" value="${log.id}" ${isChecked ? 'checked' : ''} onchange="toggleDailyLogSelection('${log.id}', this.checked)" class="rounded text-blue-600 cursor-pointer">
-                            <span class="font-bold text-blue-900">${log.name} (${log.workerId})</span>
+                            <span class="font-bold text-blue-900">${escapeHtml(log.name)} (${escapeHtml(log.workerId)})</span>
+                            ${lockerBadge}
                         </div>
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${log.status === 'IN' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-700'}">${log.status}</span>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${log.status === 'IN' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-700'}">${escapeHtml(log.status)}</span>
                     </div>
                     <div class="flex justify-between text-[11px] text-gray-600 pl-6">
-                        <span>Type: <strong>${log.type}</strong></span>
-                        <span>In: <strong class="text-emerald-700">${log.inTime}</strong> | Out: <strong class="text-purple-700">${log.outTime || '--:--'}</strong></span>
+                        <span>Type: <strong>${escapeHtml(log.type)}</strong></span>
+                        <span>In: <strong class="text-emerald-700">${escapeHtml(log.inTime)}</strong> | Out: <strong class="text-purple-700">${escapeHtml(log.outTime || '--:--')}</strong></span>
                     </div>
                     <div class="flex justify-between items-center pt-1 border-t border-gray-100 pl-6">
-                        <span class="font-mono text-[11px]">Hrs: <strong>${log.totalHours}h</strong> | OT: <strong class="text-purple-600">${log.otHours}h</strong></span>
+                        <span class="font-mono text-[11px]">Time: <strong>${totalFormatted}</strong> | OT: <strong class="text-purple-600">${otFormatted}</strong></span>
                         <div class="space-x-1">
                             <button onclick="openModifyOutTimeModal('${log.id}')" class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-[10px] font-semibold">✏️ Edit</button>
                             <button onclick="deleteAttendanceLog('${log.id}')" class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-semibold">🗑️ Delete</button>
@@ -1083,9 +1541,9 @@
             document.getElementById('statPresent').textContent = presentCount;
             document.getElementById('statContractors').textContent = contractorCount;
             document.getElementById('statCompleted').textContent = completedCount;
-            document.getElementById('statTotalOT').textContent = totalOT.toFixed(2);
+            document.getElementById('statTotalOT').textContent = otWorkersCount;
             document.getElementById('topBlockPresent').textContent = presentCount;
-            document.getElementById('topBlockOT').textContent = totalOT.toFixed(2);
+            document.getElementById('topBlockOT').textContent = otWorkersCount;
             document.getElementById('dailySelectedCount').textContent = selectedDailyLogs.size;
         }
 
@@ -1109,26 +1567,28 @@
         }
 
         function deleteSelectedDailyLogs() {
-            if (selectedDailyLogs.size === 0) return alert("Select at least one attendance log.");
-            if (currentUser && currentUser.role !== 'Admin') return alert("Restricted: Admin only.");
-            if (confirm(`Delete ${selectedDailyLogs.size} selected attendance log(s)?`)) {
+            if (selectedDailyLogs.size === 0) return showToast("Select at least one attendance log.", "⚠️");
+            if (currentUser && currentUser.role !== 'Admin') return showToast("Restricted: Admin only.", "🛡️");
+            openConfirmModal("Delete Selected Logs", `Delete ${selectedDailyLogs.size} selected attendance log(s)?`, () => {
                 attendanceLogs = attendanceLogs.filter(l => !selectedDailyLogs.has(l.id));
                 selectedDailyLogs.clear();
                 saveToCloud();
                 renderDailyTable();
-            }
+                showToast("Selected logs deleted.", "🗑️");
+            });
         }
 
         function deleteAttendanceLog(logId) {
-            if (currentUser && currentUser.role !== 'Admin') return alert("Restricted: Admin only.");
-            if (confirm("Delete this attendance entry?")) {
+            if (currentUser && currentUser.role !== 'Admin') return showToast("Restricted: Admin only.", "🛡️");
+            openConfirmModal("Delete Attendance Entry", "Are you sure you want to delete this attendance entry?", () => {
                 attendanceLogs = attendanceLogs.filter(l => l.id !== logId);
                 selectedDailyLogs.delete(logId);
                 selectedHistoryLogs.delete(logId);
                 saveToCloud();
                 renderDailyTable();
                 renderHistoryTable();
-            }
+                showToast("Attendance log deleted.", "🗑️");
+            });
         }
 
         function populateDeptFilterDropdown() {
@@ -1172,6 +1632,9 @@
 
             filteredLogs.forEach(log => {
                 const isChecked = selectedHistoryLogs.has(log.id);
+                const totalFormatted = formatMinutesToHHMM(log.totalMinutes || 0);
+                const otFormatted = formatMinutesToHHMM(log.otMinutes || 0);
+                const lockerBadge = getWorkerLockerBadgeHtml(log.workerId);
 
                 const tr = document.createElement('tr');
                 tr.className = `hover:bg-slate-50 transition ${isChecked ? 'bg-blue-50/60' : ''}`;
@@ -1179,22 +1642,44 @@
                     <td class="py-2.5 px-4 text-center">
                         <input type="checkbox" value="${log.id}" ${isChecked ? 'checked' : ''} onchange="toggleHistoryLogSelection('${log.id}', this.checked)" class="rounded text-blue-600 cursor-pointer">
                     </td>
-                    <td class="py-2.5 px-4 font-semibold text-gray-600">${log.date}</td>
-                    <td class="py-2.5 px-4 font-bold text-gray-800">${log.workerId}</td>
-                    <td class="py-2.5 px-4 font-semibold text-blue-900">${log.name}</td>
-                    <td class="py-2.5 px-4">${log.type}${log.agency ? ' (' + log.agency + ')' : ''}</td>
-                    <td class="py-2.5 px-4 text-emerald-700 font-bold">${log.inTime}</td>
-                    <td class="py-2.5 px-4 text-purple-700 font-bold">${log.outTime || '--:--'}</td>
-                    <td class="py-2.5 px-4">${log.totalHours}h</td>
-                    <td class="py-2.5 px-4 font-bold text-purple-600">${log.otHours}h</td>
-                    <td class="py-2.5 px-4 text-gray-500">${log.loggedBy}</td>
-                    <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${log.status === 'IN' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-700'}">${log.status}</span></td>
+                    <td class="py-2.5 px-4 font-semibold text-gray-600">${escapeHtml(log.date)}</td>
+                    <td class="py-2.5 px-4 font-bold text-gray-800">${escapeHtml(log.workerId)}</td>
+                    <td class="py-2.5 px-4 font-semibold text-blue-900">${escapeHtml(log.name)}</td>
+                    <td class="py-2.5 px-4">${lockerBadge}</td>
+                    <td class="py-2.5 px-4">${escapeHtml(log.type)}${log.agency ? ' (' + escapeHtml(log.agency) + ')' : ''}</td>
+                    <td class="py-2.5 px-4 text-emerald-700 font-bold">${escapeHtml(log.inTime)}</td>
+                    <td class="py-2.5 px-4 text-purple-700 font-bold">${escapeHtml(log.outTime || '--:--')}</td>
+                    <td class="py-2.5 px-4">${totalFormatted}</td>
+                    <td class="py-2.5 px-4 font-bold text-purple-600">${otFormatted}</td>
+                    <td class="py-2.5 px-4 text-gray-500">${escapeHtml(log.loggedBy)}</td>
+                    <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${log.status === 'IN' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-700'}">${escapeHtml(log.status)}</span></td>
                     <td class="py-2.5 px-4 text-right space-x-2">
                         <button onclick="openModifyOutTimeModal('${log.id}')" class="text-purple-600 hover:underline font-semibold text-xs">Edit</button>
                         <button onclick="deleteAttendanceLog('${log.id}')" class="text-red-600 hover:underline font-semibold text-xs">Delete</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
+
+                const card = document.createElement('div');
+                card.className = "p-3 bg-white space-y-1.5 text-xs";
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-blue-900">${escapeHtml(log.name)} (${escapeHtml(log.workerId)})</span>
+                        <span class="text-[11px] font-mono text-gray-500">${escapeHtml(log.date)}</span>
+                    </div>
+                    <div class="flex justify-between items-center text-[11px] text-gray-600">
+                        <span>In: <strong class="text-emerald-700">${escapeHtml(log.inTime)}</strong> | Out: <strong class="text-purple-700">${escapeHtml(log.outTime || '--:--')}</strong></span>
+                        ${lockerBadge}
+                    </div>
+                    <div class="flex justify-between items-center pt-1 border-t border-gray-100">
+                        <span class="font-mono text-[11px]">Time: <strong>${totalFormatted}</strong> | OT: <strong class="text-purple-600">${otFormatted}</strong></span>
+                        <div class="space-x-2">
+                            <button onclick="openModifyOutTimeModal('${log.id}')" class="text-purple-600 font-semibold">Edit</button>
+                            <button onclick="deleteAttendanceLog('${log.id}')" class="text-red-600 font-semibold">Delete</button>
+                        </div>
+                    </div>
+                `;
+                mobileList.appendChild(card);
             });
 
             document.getElementById('historySelectedCount').textContent = selectedHistoryLogs.size;
@@ -1216,17 +1701,19 @@
         }
 
         function deleteSelectedHistoryLogs() {
-            if (selectedHistoryLogs.size === 0) return alert("Select at least one history log.");
-            if (currentUser && currentUser.role !== 'Admin') return alert("Restricted: Admin only.");
-            if (confirm(`Delete ${selectedHistoryLogs.size} selected historical log(s)?`)) {
+            if (selectedHistoryLogs.size === 0) return showToast("Select at least one history log.", "⚠️");
+            if (currentUser && currentUser.role !== 'Admin') return showToast("Restricted: Admin only.", "🛡️");
+            openConfirmModal("Delete Historical Logs", `Delete ${selectedHistoryLogs.size} selected historical log(s)?`, () => {
                 attendanceLogs = attendanceLogs.filter(l => !selectedHistoryLogs.has(l.id));
                 selectedHistoryLogs.clear();
                 saveToCloud();
                 renderDailyTable();
                 renderHistoryTable();
-            }
+                showToast("Historical logs deleted.", "🗑️");
+            });
         }
 
+        // --- Directory Table & Actions ---
         function renderDirectoryTable() {
             const query = document.getElementById('dirSearchInput').value.toLowerCase().trim();
             const typeFilter = document.getElementById('dirTypeFilter').value;
@@ -1235,30 +1722,45 @@
 
             Object.values(workersDirectory).forEach(worker => {
                 if (typeFilter !== 'ALL' && worker.type !== typeFilter) return;
+                const locker = getLockerById(worker.lockerId);
+                const lockerNoStr = locker ? locker.no.toLowerCase() : '';
                 if (query) {
                     const matchName = worker.name.toLowerCase().includes(query);
                     const matchId = worker.id.toLowerCase().includes(query);
-                    if (!matchName && !matchId) return;
+                    const matchMobile = (worker.mobile || '').toLowerCase().includes(query);
+                    const matchLocker = lockerNoStr.includes(query);
+                    if (!matchName && !matchId && !matchMobile && !matchLocker) return;
                 }
 
                 const isChecked = selectedDirWorkers.has(worker.id);
                 const tr = document.createElement('tr');
                 tr.className = `hover:bg-slate-50 transition ${isChecked ? 'bg-blue-50/60' : ''}`;
-                const svgId = `dir_barcode_${worker.id}`;
+                const svgId = `dir_barcode_${worker.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+
+                const lockerCellHtml = locker
+                    ? `<div class="flex items-center gap-1.5">
+                         <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 font-mono">🔐 ${escapeHtml(locker.no)}</span>
+                         <button onclick="releaseLockerByWorkerId('${worker.id}')" title="Vacate Locker" class="text-[10px] text-red-600 hover:underline font-semibold">Vacate</button>
+                       </div>`
+                    : `<button onclick="openAssignLockerModalForWorker('${worker.id}')" class="text-[11px] text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded font-semibold border border-indigo-200 transition">+ Assign Locker</button>`;
 
                 tr.innerHTML = `
                     <td class="py-2.5 px-4 text-center">
                         <input type="checkbox" value="${worker.id}" ${isChecked ? 'checked' : ''} onchange="toggleDirWorkerSelection('${worker.id}', this.checked)" class="rounded text-blue-600 cursor-pointer">
                     </td>
-                    <td class="py-2.5 px-4 font-mono font-bold text-gray-800">${worker.id}</td>
-                    <td class="py-2.5 px-4 font-semibold text-blue-900">${worker.name}</td>
-                    <td class="py-2.5 px-4">${worker.dept || 'General'}</td>
-                    <td class="py-2.5 px-4">${worker.type}</td>
-                    <td class="py-2.5 px-4 text-gray-500">${worker.agency || '-'}</td>
+                    <td class="py-2.5 px-4 font-mono font-bold text-gray-800">${escapeHtml(worker.id)}</td>
+                    <td class="py-2.5 px-4 font-semibold text-blue-900">${escapeHtml(worker.name)}</td>
+                    <td class="py-2.5 px-4">${escapeHtml(worker.dept || 'General')}</td>
+                    <td class="py-2.5 px-4">${escapeHtml(worker.type)}</td>
+                    <td class="py-2.5 px-4 text-gray-500">
+                        ${worker.mobile ? `<div>📞 ${escapeHtml(worker.mobile)}</div>` : ''}
+                        ${worker.agency ? `<div class="text-amber-700 font-medium">${escapeHtml(worker.agency)}</div>` : (!worker.mobile ? '-' : '')}
+                    </td>
+                    <td class="py-2.5 px-4">${lockerCellHtml}</td>
                     <td class="py-2 px-4 text-center">
                         <svg id="${svgId}" class="mx-auto block"></svg>
                     </td>
-                    <td class="py-2.5 px-4 text-right space-x-1">
+                    <td class="py-2.5 px-4 text-right space-x-1 whitespace-nowrap">
                         <button onclick="printSingleBadgeFromDir('${worker.id}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2 py-1 rounded text-xs font-medium transition">🖨️ Badge</button>
                         <button onclick="openEditWorkerModal('${worker.id}')" class="bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-2 py-1 rounded text-xs font-medium transition">✏️ Edit</button>
                         <button onclick="deleteWorkerFromDirectory('${worker.id}')" class="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-2 py-1 rounded text-xs font-medium transition">🗑️ Delete</button>
@@ -1268,7 +1770,6 @@
 
                 setTimeout(() => {
                     try {
-                        // UPDATED: Increased width (1.8), height (35), and enabled displayValue for directory preview
                         JsBarcode(`#${svgId}`, worker.id, { format: "CODE128", width: 1.8, height: 35, displayValue: true, fontSize: 9, margin: 2 });
                     } catch (e) {}
                 }, 10);
@@ -1295,22 +1796,22 @@
         }
 
         function deleteSelectedDirWorkers() {
-            if (selectedDirWorkers.size === 0) return alert("Select at least one worker profile to delete.");
-            if (currentUser && currentUser.role !== 'Admin') return alert("Restricted: Admin only.");
-            if (confirm(`Are you sure you want to delete ${selectedDirWorkers.size} selected worker profile(s) from the Master Directory?`)) {
+            if (selectedDirWorkers.size === 0) return showToast("Select at least one worker profile to delete.", "⚠️");
+            if (currentUser && currentUser.role !== 'Admin') return showToast("Restricted: Admin only.", "🛡️");
+            openConfirmModal("Delete Selected Workers", `Are you sure you want to delete ${selectedDirWorkers.size} selected worker profile(s)? Any assigned lockers will be released automatically.`, () => {
                 selectedDirWorkers.forEach(workerId => {
                     delete workersDirectory[workerId];
                 });
                 selectedDirWorkers.clear();
                 saveToCloud();
-                renderDirectoryTable();
+                refreshAllUI();
                 autoGenerateNewWorkerId();
-                showAlert(`🗑️ Selected worker profiles deleted successfully.`, 'warning');
-            }
+                showAlert(`🗑️ Selected worker profiles deleted and assigned lockers released.`, 'warning');
+            });
         }
 
         function printSelectedBadges() {
-            if (selectedDirWorkers.size === 0) return alert("Select at least one badge to print.");
+            if (selectedDirWorkers.size === 0) return showToast("Select at least one badge to print.", "⚠️");
             const selectedList = [];
             selectedDirWorkers.forEach(id => { if (workersDirectory[id]) selectedList.push(workersDirectory[id]); });
             printBadgesArray(selectedList);
@@ -1323,9 +1824,29 @@
             document.getElementById('editWorkerIdLabel').textContent = `Barcode ID: ${worker.id}`;
             document.getElementById('editWorkerNameInput').value = worker.name;
             document.getElementById('editWorkerDeptInput').value = worker.dept || '';
+            document.getElementById('editWorkerMobileInput').value = worker.mobile || '';
             document.getElementById('editWorkerTypeInput').value = worker.type || 'Regular';
             document.getElementById('editWorkerAgencyInput').value = worker.agency || '';
             toggleEditContractorInput();
+
+            // Populate Locker Dropdown (current worker's locker + available lockers)
+            const lockerSelect = document.getElementById('editWorkerLockerSelect');
+            lockerSelect.innerHTML = '<option value="">-- No Locker Assigned --</option>';
+            const currentLocker = getLockerById(worker.lockerId);
+            if (currentLocker) {
+                const opt = document.createElement('option');
+                opt.value = currentLocker.id;
+                opt.textContent = `🔐 ${currentLocker.no} (${currentLocker.location}) [Current]`;
+                lockerSelect.appendChild(opt);
+            }
+            getAvailableLockers().forEach(l => {
+                const opt = document.createElement('option');
+                opt.value = l.id;
+                opt.textContent = `🔐 ${l.no} (${l.location})`;
+                lockerSelect.appendChild(opt);
+            });
+            lockerSelect.value = worker.lockerId || '';
+
             document.getElementById('editWorkerModal').classList.remove('hidden');
         }
 
@@ -1344,28 +1865,45 @@
         function saveEditedWorker() {
             if (!selectedWorkerForEdit) return;
             const name = document.getElementById('editWorkerNameInput').value.trim();
-            if (!name) return alert("Name cannot be empty.");
+            if (!name) return showToast("Name cannot be empty.", "⚠️");
+
+            const newLockerId = document.getElementById('editWorkerLockerSelect').value || null;
+            const oldLockerId = selectedWorkerForEdit.lockerId || null;
 
             selectedWorkerForEdit.name = name;
-            selectedWorkerForEdit.dept = document.getElementById('editWorkerDeptInput').value.trim();
+            selectedWorkerForEdit.dept = document.getElementById('editWorkerDeptInput').value.trim() || 'General';
+            selectedWorkerForEdit.mobile = document.getElementById('editWorkerMobileInput').value.trim();
             selectedWorkerForEdit.type = document.getElementById('editWorkerTypeInput').value;
             selectedWorkerForEdit.agency = document.getElementById('editWorkerAgencyInput').value.trim();
 
+            if (newLockerId !== oldLockerId) {
+                selectedWorkerForEdit.lockerId = newLockerId;
+                selectedWorkerForEdit.lockerAssignedOn = newLockerId ? new Date().toLocaleDateString('en-IN') : '';
+            }
+
             saveToCloud();
-            renderDirectoryTable();
-            renderDailyTable();
+            refreshAllUI();
             closeEditWorkerModal();
+            showToast("Worker profile & locker updated.", "✅");
         }
 
         function deleteWorkerFromDirectory(workerId) {
-            if (currentUser && currentUser.role !== 'Admin') return alert("Restricted: Admin only.");
-            if (confirm(`Delete worker ${workerId} from directory?`)) {
+            if (currentUser && currentUser.role !== 'Admin') return showToast("Restricted: Admin only.", "🛡️");
+            const worker = workersDirectory[workerId];
+            if (!worker) return;
+            const locker = getLockerById(worker.lockerId);
+            const msg = locker
+                ? `Delete worker ${worker.name} (${workerId})? Their assigned locker (${locker.no}) will be automatically vacated.`
+                : `Delete worker ${worker.name} (${workerId}) from directory?`;
+
+            openConfirmModal("Delete Worker Profile", msg, () => {
                 delete workersDirectory[workerId];
                 selectedDirWorkers.delete(workerId);
                 saveToCloud();
-                renderDirectoryTable();
+                refreshAllUI();
                 autoGenerateNewWorkerId();
-            }
+                showToast("Worker deleted.", "🗑️");
+            });
         }
 
         function openModifyOutTimeModal(logId) {
@@ -1396,6 +1934,7 @@
             saveToCloud();
             renderDailyTable();
             closeModifyOutTimeModal();
+            showToast("Reset to IN status.", "🔄");
         }
 
         function saveModifiedOutTime() {
@@ -1408,6 +1947,7 @@
             saveToCloud();
             renderDailyTable();
             closeModifyOutTimeModal();
+            showToast("Out time saved.", "✅");
         }
 
         function toggleContractorInput() {
@@ -1424,34 +1964,52 @@
             const dept = document.getElementById('newWorkerDept').value.trim() || 'General';
             const type = document.getElementById('newWorkerType').value;
             const agency = document.getElementById('newWorkerAgency').value.trim();
+            const mobile = document.getElementById('newWorkerMobile').value.trim();
+            const lockerId = document.getElementById('newWorkerLocker').value || null;
 
             if (!id || !name) return;
 
-            // Strict Duplicate Barcode ID Check
             if (workersDirectory[id]) {
                 triggerScanFeedback(true);
-                return alert(`⚠️ Duplicate Barcode ID Alert: Worker ID "${id}" is already registered to "${workersDirectory[id].name}". Please use a unique Barcode ID.`);
+                return showToast(`Duplicate ID Alert: "${id}" is already registered to "${workersDirectory[id].name}".`, "⚠️");
             }
 
-            const worker = { id, name, dept, type, agency };
+            const worker = {
+                id,
+                name,
+                dept,
+                type,
+                agency,
+                mobile,
+                lockerId,
+                lockerAssignedOn: lockerId ? new Date().toLocaleDateString('en-IN') : ''
+            };
             workersDirectory[id] = worker;
             saveToCloud();
 
+            const assignedLocker = getLockerById(lockerId);
             document.getElementById('badgeName').textContent = name;
             document.getElementById('badgeType').textContent = `${type}${agency ? ' (' + agency + ')' : ''}`;
-            document.getElementById('badgeDept').textContent = `Dept: ${dept} | ID: ${id}`;
+            document.getElementById('badgeDept').textContent = `Dept: ${dept} | ID: ${id}${assignedLocker ? ' | 🔐 ' + assignedLocker.no : ''}`;
             document.getElementById('barcodePreviewCard').classList.remove('hidden');
 
-            // UPDATED: Increased width (2.2), height (45) for quick scanning on preview card
             JsBarcode("#previewBarcodeSvg", id, { format: "CODE128", width: 2.2, height: 45, displayValue: true, fontSize: 11, margin: 2 });
-            renderDirectoryTable();
+            
+            document.getElementById('newWorkerName').value = '';
+            document.getElementById('newWorkerMobile').value = '';
+            document.getElementById('newWorkerLocker').value = '';
+
+            refreshAllUI();
             autoGenerateNewWorkerId();
-            showAlert(`✅ Worker <strong>${name}</strong> (${id}) registered successfully!`, 'success');
+            showAlert(`✅ Worker <strong>${escapeHtml(name)}</strong> (${escapeHtml(id)}) registered${assignedLocker ? ` with Locker <strong>${escapeHtml(assignedLocker.no)}</strong>` : ''}!`, 'success');
         }
 
         function printSingleBadgeFromPreview() {
-            const id = document.getElementById('newWorkerId').value.trim();
-            if (id && workersDirectory[id]) printBadgesArray([workersDirectory[id]]);
+            const svgEl = document.getElementById('previewBarcodeSvg');
+            const idText = document.getElementById('badgeDept').textContent.split('ID: ')[1]?.split(' |')[0]?.trim();
+            if (idText && workersDirectory[idText]) {
+                printBadgesArray([workersDirectory[idText]]);
+            }
         }
 
         function printSingleBadgeFromDir(workerId) {
@@ -1460,7 +2018,7 @@
 
         function printBulkBadges() {
             const list = Object.values(workersDirectory);
-            if (list.length === 0) return alert("No workers registered to print.");
+            if (list.length === 0) return showToast("No workers registered to print.", "⚠️");
             printBadgesArray(list);
         }
 
@@ -1468,25 +2026,402 @@
             const container = document.getElementById('printBadgesContainer');
             container.innerHTML = '';
             workers.forEach(w => {
+                const locker = getLockerById(w.lockerId);
                 const box = document.createElement('div');
                 box.className = "badge-print-box";
-                const svgId = `print_svg_${w.id}_${Math.random().toString(36).substr(2, 5)}`;
+                const svgId = `print_svg_${w.id.replace(/[^a-zA-Z0-9_-]/g, '_')}_${Math.random().toString(36).substr(2, 5)}`;
                 box.innerHTML = `
-                    <div style="font-weight: bold; font-size: 11pt; color: #000; line-height: 1.1;">${w.name}</div>
-                    <div style="font-size: 8pt; color: #333; margin-top: 1mm;">${w.type}${w.agency ? ' - ' + w.agency : ''}</div>
-                    <div style="font-size: 7.5pt; color: #555;">${w.dept || 'General'}</div>
+                    <div style="font-weight: bold; font-size: 11pt; color: #000; line-height: 1.1;">${escapeHtml(w.name)}</div>
+                    <div style="font-size: 8pt; color: #333; margin-top: 1mm;">${escapeHtml(w.type)}${w.agency ? ' - ' + escapeHtml(w.agency) : ''}</div>
+                    <div style="font-size: 7.5pt; color: #555;">${escapeHtml(w.dept || 'General')}${locker ? ' • Locker: ' + escapeHtml(locker.no) : ''}</div>
                     <div style="margin-top: 2mm;"><svg id="${svgId}"></svg></div>
                 `;
                 container.appendChild(box);
                 setTimeout(() => {
                     try {
-                        // UPDATED: Increased width (2.0), height (42) specifically tailored for 6x4cm physical badge printing
                         JsBarcode(`#${svgId}`, w.id, { format: "CODE128", width: 2.0, height: 42, displayValue: true, fontSize: 10, margin: 1 });
                     } catch (e) {}
                 }, 10);
             });
             setTimeout(() => window.print(), 300);
         }
+
+        // =========================================================================
+        // LOCKER MANAGEMENT FUNCTIONS
+        // =========================================================================
+
+        function updateLockerKPIs() {
+            const total = lockersList.length;
+            let assigned = 0;
+            lockersList.forEach(l => {
+                if (getAssignedWorkerForLocker(l.id)) assigned++;
+            });
+            const free = total - assigned;
+            const workersWithLockers = Object.values(workersDirectory).filter(w => !!getLockerById(w.lockerId)).length;
+
+            const kpiTotal = document.getElementById('kpiTotalLockers');
+            if (kpiTotal) {
+                kpiTotal.textContent = total;
+                document.getElementById('kpiAssignedLockers').textContent = assigned;
+                document.getElementById('kpiFreeLockers').textContent = free;
+                document.getElementById('kpiWorkersWithLockers').textContent = workersWithLockers;
+            }
+            const topBlock = document.getElementById('topBlockLockers');
+            if (topBlock) {
+                topBlock.textContent = `${free}/${total}`;
+            }
+        }
+
+        function renderLockerAllocations() {
+            const tbody = document.getElementById('lockerAllocationRows');
+            if (!tbody) return;
+            const q = (document.getElementById('allocationSearch').value || '').toLowerCase().trim();
+            const filter = document.getElementById('allocationFilter').value;
+
+            const filtered = lockersList.filter(l => {
+                const w = getAssignedWorkerForLocker(l.id);
+                if (filter === 'assigned' && !w) return false;
+                if (filter === 'free' && w) return false;
+                if (q) {
+                    const hay = [l.no, l.location, w?.name, w?.id, w?.dept].join(' ').toLowerCase();
+                    if (!hay.includes(q)) return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-gray-500">No lockers match your filter. Add lockers in <strong>Locker Master Setup</strong>.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(l => {
+                const w = getAssignedWorkerForLocker(l.id);
+                return `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-2.5 px-4 font-mono font-bold text-indigo-950">🔐 ${escapeHtml(l.no)}</td>
+                        <td class="py-2.5 px-4 text-gray-600">${escapeHtml(l.location)}</td>
+                        <td class="py-2.5 px-4 font-semibold ${w ? 'text-blue-900' : 'text-gray-400'}">${w ? escapeHtml(w.name) : '—'}</td>
+                        <td class="py-2.5 px-4 font-mono text-gray-700">${w ? escapeHtml(w.id) : '—'}</td>
+                        <td class="py-2.5 px-4 text-gray-600">${w ? escapeHtml(w.dept || 'General') : '—'}</td>
+                        <td class="py-2.5 px-4 font-mono text-gray-500">${w ? escapeHtml(w.lockerAssignedOn || '—') : '—'}</td>
+                        <td class="py-2.5 px-4">
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${w ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
+                                ${w ? 'Assigned' : 'Available'}
+                            </span>
+                        </td>
+                        <td class="py-2.5 px-4 text-right">
+                            ${w
+                                ? `<button onclick="releaseLockerById('${l.id}')" class="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2.5 py-1 rounded text-[11px] font-semibold transition">Vacate</button>`
+                                : `<button onclick="openAssignLockerModal('${l.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-[11px] font-semibold transition">Assign</button>`
+                            }
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderLockerMasterTable() {
+            const tbody = document.getElementById('lockerMasterRows');
+            if (!tbody) return;
+            const q = (document.getElementById('lockerMasterSearch').value || '').toLowerCase().trim();
+
+            const filtered = lockersList.filter(l => {
+                if (!q) return true;
+                return (l.no + ' ' + l.location).toLowerCase().includes(q);
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-gray-500">No lockers registered yet. Add a locker above or use Bulk Add Range.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(l => {
+                const w = getAssignedWorkerForLocker(l.id);
+                return `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-2.5 px-4 font-mono font-bold text-gray-900">🔐 ${escapeHtml(l.no)}</td>
+                        <td class="py-2.5 px-4 text-gray-600">${escapeHtml(l.location)}</td>
+                        <td class="py-2.5 px-4">
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${w ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}">
+                                ${w ? 'Assigned' : 'Available'}
+                            </span>
+                        </td>
+                        <td class="py-2.5 px-4 font-semibold text-blue-900">${w ? `${escapeHtml(w.name)} (${escapeHtml(w.id)})` : '—'}</td>
+                        <td class="py-2.5 px-4 text-right">
+                            ${!w
+                                ? `<button onclick="deleteLockerById('${l.id}')" class="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-2.5 py-1 rounded text-[11px] font-semibold transition">🗑️ Delete</button>`
+                                : `<span class="text-[11px] text-gray-400 italic">In Use</span>`
+                            }
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function addSingleLocker() {
+            const noInput = document.getElementById('newLockerNoInput');
+            const locSelect = document.getElementById('newLockerLocationSelect');
+            const no = noInput.value.trim();
+            if (!no) return showToast("Enter a locker number (e.g. L-001).", "⚠️");
+
+            if (lockersList.some(l => l.no.toLowerCase() === no.toLowerCase())) {
+                return showToast(`Locker "${no}" already exists!`, "⚠️");
+            }
+
+            lockersList.push({
+                id: 'lkr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                no,
+                location: locSelect.value
+            });
+            noInput.value = '';
+            saveToCloud();
+            refreshAllUI();
+            showToast(`Locker ${no} added.`, "✅");
+        }
+
+        function openBulkLockerRangeModal() {
+            document.getElementById('bulkLockerRangeModal').classList.remove('hidden');
+        }
+
+        function closeBulkLockerRangeModal() {
+            document.getElementById('bulkLockerRangeModal').classList.add('hidden');
+        }
+
+        function confirmBulkLockerRange() {
+            const prefix = document.getElementById('bulkLockerPrefix').value;
+            const pad = parseInt(document.getElementById('bulkLockerPad').value, 10) || 0;
+            const start = parseInt(document.getElementById('bulkLockerStart').value, 10);
+            const end = parseInt(document.getElementById('bulkLockerEnd').value, 10);
+            const location = document.getElementById('bulkLockerLocation').value;
+
+            if (isNaN(start) || isNaN(end) || start < 0 || end < start || (end - start) > 999) {
+                return showToast("Enter a valid range (maximum 1,000 lockers at once).", "⚠️");
+            }
+
+            let addedCount = 0;
+            const existingNos = new Set(lockersList.map(l => l.no.toLowerCase()));
+
+            for (let n = start; n <= end; n++) {
+                const numStr = pad > 0 ? String(n).padStart(pad, '0') : String(n);
+                const lockerNo = `${prefix}${numStr}`;
+                if (!existingNos.has(lockerNo.toLowerCase())) {
+                    lockersList.push({
+                        id: 'lkr_' + Date.now() + '_' + n + '_' + Math.random().toString(36).substr(2, 3),
+                        no: lockerNo,
+                        location
+                    });
+                    existingNos.add(lockerNo.toLowerCase());
+                    addedCount++;
+                }
+            }
+
+            saveToCloud();
+            refreshAllUI();
+            closeBulkLockerRangeModal();
+            showToast(`${addedCount} locker(s) created and synced!`, "✅");
+        }
+
+        function deleteLockerById(lockerId) {
+            if (currentUser && currentUser.role !== 'Admin') return showToast("Restricted: Admin only.", "🛡️");
+            const locker = getLockerById(lockerId);
+            if (!locker) return;
+            if (getAssignedWorkerForLocker(lockerId)) {
+                return showToast("Cannot delete an occupied locker. Vacate it first.", "⚠️");
+            }
+            openConfirmModal("Delete Locker", `Delete locker ${locker.no} (${locker.location})?`, () => {
+                lockersList = lockersList.filter(l => l.id !== lockerId);
+                saveToCloud();
+                refreshAllUI();
+                showToast(`Locker ${locker.no} deleted.`, "🗑️");
+            });
+        }
+
+        // --- Assign Locker Modal Logic ---
+        let cachedUnassignedWorkers = [];
+
+        function openAssignLockerModal(preselectedLockerId = null, preselectedWorkerId = null) {
+            const freeLockers = getAvailableLockers();
+            if (freeLockers.length === 0) {
+                return showToast("No available lockers. Add lockers in Locker Master or vacate an existing one.", "⚠️");
+            }
+
+            cachedUnassignedWorkers = Object.values(workersDirectory).filter(w => !getLockerById(w.lockerId));
+            if (cachedUnassignedWorkers.length === 0) {
+                return showToast("All registered workers already have lockers assigned!", "⚠️");
+            }
+
+            const lockerSelect = document.getElementById('assignModalLockerSelect');
+            lockerSelect.innerHTML = freeLockers.map(l =>
+                `<option value="${l.id}">🔐 ${escapeHtml(l.no)} — ${escapeHtml(l.location)}</option>`
+            ).join('');
+            if (preselectedLockerId && freeLockers.some(l => l.id === preselectedLockerId)) {
+                lockerSelect.value = preselectedLockerId;
+            }
+
+            document.getElementById('assignModalWorkerFilter').value = '';
+            renderAssignModalWorkerDropdown(cachedUnassignedWorkers, preselectedWorkerId);
+            document.getElementById('assignLockerModal').classList.remove('hidden');
+        }
+
+        function openAssignLockerModalForWorker(workerId) {
+            openAssignLockerModal(null, workerId);
+        }
+
+        function filterAssignWorkerOptions() {
+            const q = document.getElementById('assignModalWorkerFilter').value.toLowerCase().trim();
+            const filtered = cachedUnassignedWorkers.filter(w =>
+                w.name.toLowerCase().includes(q) || w.id.toLowerCase().includes(q) || (w.dept || '').toLowerCase().includes(q)
+            );
+            renderAssignModalWorkerDropdown(filtered, null);
+        }
+
+        function renderAssignModalWorkerDropdown(list, preselectedWorkerId) {
+            const workerSelect = document.getElementById('assignModalWorkerSelect');
+            if (list.length === 0) {
+                workerSelect.innerHTML = '<option value="">No matching unassigned workers</option>';
+                return;
+            }
+            workerSelect.innerHTML = list.map(w =>
+                `<option value="${w.id}">${escapeHtml(w.id)} — ${escapeHtml(w.name)} (${escapeHtml(w.dept || 'General')})</option>`
+            ).join('');
+            if (preselectedWorkerId && list.some(w => w.id === preselectedWorkerId)) {
+                workerSelect.value = preselectedWorkerId;
+            }
+        }
+
+        function closeAssignLockerModal() {
+            document.getElementById('assignLockerModal').classList.add('hidden');
+        }
+
+        function confirmLockerAssignment() {
+            const lockerId = document.getElementById('assignModalLockerSelect').value;
+            const workerId = document.getElementById('assignModalWorkerSelect').value;
+
+            if (!lockerId || !workerId) return showToast("Please select both a locker and a worker.", "⚠️");
+
+            const locker = getLockerById(lockerId);
+            const worker = workersDirectory[workerId];
+            if (!locker || !worker) return showToast("Invalid locker or worker selected.", "⚠️");
+
+            if (getAssignedWorkerForLocker(lockerId)) {
+                return showToast("This locker was just assigned to another worker.", "⚠️");
+            }
+
+            worker.lockerId = locker.id;
+            worker.lockerAssignedOn = new Date().toLocaleDateString('en-IN');
+
+            saveToCloud();
+            refreshAllUI();
+            closeAssignLockerModal();
+            showToast(`Locker ${locker.no} assigned to ${worker.name}!`, "✅");
+        }
+
+        function releaseLockerById(lockerId) {
+            const locker = getLockerById(lockerId);
+            const worker = getAssignedWorkerForLocker(lockerId);
+            if (!locker || !worker) return;
+
+            openConfirmModal(
+                "Vacate Locker",
+                `Vacate Locker ${locker.no} currently assigned to ${worker.name} (${worker.id})?`,
+                () => {
+                    worker.lockerId = null;
+                    worker.lockerAssignedOn = '';
+                    saveToCloud();
+                    refreshAllUI();
+                    showToast(`Locker ${locker.no} vacated.`, "🔓");
+                },
+                "Vacate Locker"
+            );
+        }
+
+        function releaseLockerByWorkerId(workerId) {
+            const worker = workersDirectory[workerId];
+            if (!worker || !worker.lockerId) return;
+            releaseLockerById(worker.lockerId);
+        }
+
+        function exportLockerRegisterCSV() {
+            if (lockersList.length === 0) return showToast("No lockers available to export.", "⚠️");
+            let csvContent = "data:text/csv;charset=utf-8,Locker No,Location,Status,Worker Name,Employee ID,Department,Mobile,Assigned On\n";
+            lockersList.forEach(l => {
+                const w = getAssignedWorkerForLocker(l.id);
+                const row = [
+                    `"${l.no}"`,
+                    `"${l.location}"`,
+                    w ? 'Assigned' : 'Available',
+                    `"${w ? w.name : ''}"`,
+                    `"${w ? w.id : ''}"`,
+                    `"${w ? (w.dept || 'General') : ''}"`,
+                    `"${w ? (w.mobile || '') : ''}"`,
+                    `"${w ? (w.lockerAssignedOn || '') : ''}"`
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            const link = document.createElement("a");
+            link.href = encodeURI(csvContent);
+            link.download = `Locker_Register_${getTodayDateString()}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("Locker Register CSV exported.", "📥");
+        }
+
+        function downloadUnifiedBackup() {
+            const backupPayload = {
+                exportedAt: new Date().toISOString(),
+                workersDirectory,
+                lockersList,
+                attendanceLogs
+            };
+            const blob = new Blob([JSON.stringify(backupPayload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Attendance_And_Lockers_Backup_${getTodayDateString()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast("Full JSON backup downloaded.", "💾");
+        }
+
+        function restoreUnifiedBackup(event) {
+            if (currentUser && currentUser.role !== 'Admin') return showToast("Restricted: Admin only.", "🛡️");
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const parsed = JSON.parse(reader.result);
+                    if (!parsed.workersDirectory || !Array.isArray(parsed.lockersList)) {
+                        throw new Error("Invalid backup format");
+                    }
+                    openConfirmModal(
+                        "Restore JSON Backup",
+                        "Replace current workers, lockers, and attendance logs with this backup file?",
+                        () => {
+                            workersDirectory = parsed.workersDirectory;
+                            lockersList = parsed.lockersList;
+                            if (Array.isArray(parsed.attendanceLogs)) {
+                                attendanceLogs = parsed.attendanceLogs;
+                            }
+                            saveToCloud();
+                            refreshAllUI();
+                            showToast("Cloud database restored from backup!", "✅");
+                        },
+                        "Restore Backup"
+                    );
+                } catch (err) {
+                    showToast("Invalid JSON backup file.", "⚠️");
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // =========================================================================
+        // CAMERA, CSV IMPORT/EXPORT, LOG CLEARING & AUTHENTICATION
+        // =========================================================================
 
         function toggleCameraScanner() {
             getAudioContext();
@@ -1500,7 +2435,6 @@
             } else {
                 readerEl.classList.remove('hidden');
                 
-                // Directly launch the camera scanner feed instantly
                 html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
                     fps: 15, 
                     qrbox: { width: 250, height: 150 },
@@ -1516,11 +2450,29 @@
         function exportToCSV(todayOnly) {
             const todayStr = getTodayDateString();
             const logsToExport = todayOnly ? attendanceLogs.filter(l => l.date === todayStr) : attendanceLogs;
-            if (logsToExport.length === 0) return alert("No logs available.");
+            if (logsToExport.length === 0) return showToast("No logs available.", "⚠️");
 
-            let csvContent = "data:text/csv;charset=utf-8,Date,Worker ID,Name,Department,Type,Agency,In Time,Out Time,Total Hours,OT Hours,Logged By,Status\n";
+            let csvContent = "data:text/csv;charset=utf-8,Date,Worker ID,Name,Locker No,Department,Type,Agency,In Time,Out Time,Total Time,OT Time,Logged By,Status\n";
             logsToExport.forEach(l => {
-                const row = [l.date, `"${l.workerId}"`, `"${l.name}"`, `"${l.dept}"`, `"${l.type}"`, `"${l.agency || ''}"`, l.inTime, l.outTime || '', l.totalHours, l.otHours, `"${l.loggedBy}"`, l.status].join(",");
+                const totalFormatted = formatMinutesToHHMM(l.totalMinutes || 0);
+                const otFormatted = formatMinutesToHHMM(l.otMinutes || 0);
+                const w = workersDirectory[l.workerId];
+                const locker = w ? getLockerById(w.lockerId) : null;
+                const row = [
+                    l.date,
+                    `"${l.workerId}"`,
+                    `"${l.name}"`,
+                    `"${locker ? locker.no : ''}"`,
+                    `"${l.dept}"`,
+                    `"${l.type}"`,
+                    `"${l.agency || ''}"`,
+                    l.inTime,
+                    l.outTime || '',
+                    totalFormatted,
+                    otFormatted,
+                    `"${l.loggedBy}"`,
+                    l.status
+                ].join(",");
                 csvContent += row + "\n";
             });
 
@@ -1533,7 +2485,7 @@
         }
 
         function downloadCSVTemplate() {
-            let csv = "data:text/csv;charset=utf-8,ID,Name,Department,Type,Agency\nW1001,Rajesh Kumar,Assembly,Regular,\nW1002,Suresh Sharma,Pultrusion,Contractor,Apex Services\n";
+            let csv = "data:text/csv;charset=utf-8,ID,Name,Department,Type,Agency,Mobile\nW1001,Rajesh Kumar,Assembly,Regular,,9876543210\nW1002,Suresh Sharma,Pultrusion,Contractor,Apex Services,9123456780\n";
             const a = document.createElement('a');
             a.href = encodeURI(csv);
             a.download = "Worker_Import_Template.csv";
@@ -1542,7 +2494,7 @@
 
         function importWorkersCSV() {
             const fileInput = document.getElementById('csvFileInput');
-            if (!fileInput.files || fileInput.files.length === 0) return alert("Select a CSV file first.");
+            if (!fileInput.files || fileInput.files.length === 0) return showToast("Select a CSV file first.", "⚠️");
 
             const file = fileInput.files[0];
             const reader = new FileReader();
@@ -1557,7 +2509,16 @@
                     if (cols.length >= 2 && cols[0] && cols[1]) {
                         const id = cols[0];
                         if (!workersDirectory[id]) {
-                            workersDirectory[id] = { id: id, name: cols[1], dept: cols[2] || 'General', type: cols[3] || 'Regular', agency: cols[4] || '' };
+                            workersDirectory[id] = {
+                                id: id,
+                                name: cols[1],
+                                dept: cols[2] || 'General',
+                                type: cols[3] || 'Regular',
+                                agency: cols[4] || '',
+                                mobile: cols[5] || '',
+                                lockerId: null,
+                                lockerAssignedOn: ''
+                            };
                             count++;
                         } else {
                             skipped++;
@@ -1565,43 +2526,39 @@
                     }
                 }
                 saveToCloud();
-                renderDirectoryTable();
+                refreshAllUI();
                 autoGenerateNewWorkerId();
-                alert(`Imported ${count} new worker(s) successfully!${skipped > 0 ? ` (${skipped} existing duplicate ID(s) skipped)` : ''}`);
+                showToast(`Imported ${count} new worker(s)!${skipped > 0 ? ` (${skipped} duplicates skipped)` : ''}`, "✅");
             };
             reader.readAsText(file);
         }
 
         function promptClearTodayRecords() {
-            if (currentUser && currentUser.role !== 'Admin') return alert("Restricted: Admin only.");
-            if (confirm("Clear TODAY's attendance logs? (Historical logs will be preserved)")) {
+            if (currentUser && currentUser.role !== 'Admin') return showToast("Restricted: Admin only.", "🛡️");
+            openConfirmModal("Clear Today's Logs", "Clear TODAY's attendance logs? (Historical logs will be preserved)", () => {
                 const todayStr = getTodayDateString();
-                
-                // Keep only logs whose date is NOT equal to today's date
                 attendanceLogs = attendanceLogs.filter(l => l.date !== todayStr);
-                
                 selectedDailyLogs.clear();
                 saveToCloud();
                 renderDailyTable();
-                
-                // If history tab is open, refresh it so history remains untouched & visible
                 if (!document.getElementById('tabHistoryView').classList.contains('hidden')) {
                     renderHistoryTable();
                 }
                 showAlert("⚠️ Today's attendance logs cleared. History logs remain safe.", "warning");
-            }
+            }, "Clear Today");
         }
 
         function promptClearAllRecords() {
-            if (currentUser && currentUser.role !== 'Admin') return alert("Restricted: Admin only.");
-            if (confirm("CRITICAL: Delete ALL historical attendance logs permanently?")) {
+            if (currentUser && currentUser.role !== 'Admin') return showToast("Restricted: Admin only.", "🛡️");
+            openConfirmModal("Clear ALL Logs Permanently", "CRITICAL: Delete ALL historical attendance logs permanently?", () => {
                 attendanceLogs = [];
                 selectedDailyLogs.clear();
                 selectedHistoryLogs.clear();
                 saveToCloud();
                 renderDailyTable();
                 renderHistoryTable();
-            }
+                showToast("All attendance logs cleared.", "🗑️");
+            }, "Delete Everything");
         }
 
         function updateUserUI() {
@@ -1672,9 +2629,9 @@
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition";
                 tr.innerHTML = `
-                    <td class="p-2.5 font-bold text-gray-800">${u.name}</td>
-                    <td class="p-2.5 text-gray-600 font-mono">${u.username}</td>
-                    <td class="p-2.5"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${u.role === 'Admin' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}">${u.role}</span></td>
+                    <td class="p-2.5 font-bold text-gray-800">${escapeHtml(u.name)}</td>
+                    <td class="p-2.5 text-gray-600 font-mono">${escapeHtml(u.username)}</td>
+                    <td class="p-2.5"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${u.role === 'Admin' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}">${escapeHtml(u.role)}</span></td>
                     <td class="p-2.5 text-right">
                         ${isSelf ? '<span class="text-[10px] text-gray-400 italic">Active Self</span>' : `<button onclick="deleteUserAccount('${u.username}')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-2 py-0.5 rounded text-[10px] font-semibold">🗑️ Delete</button>`}
                     </td>
@@ -1684,13 +2641,14 @@
         }
 
         function deleteUserAccount(username) {
-            if (!currentUser || currentUser.role !== 'Admin') return alert("Restricted: Admin only.");
-            if (currentUser.username.toLowerCase() === username.toLowerCase()) return alert("Cannot delete active self!");
-            if (confirm(`Delete user account ${username}?`)) {
+            if (!currentUser || currentUser.role !== 'Admin') return showToast("Restricted: Admin only.", "🛡️");
+            if (currentUser.username.toLowerCase() === username.toLowerCase()) return showToast("Cannot delete active self!", "⚠️");
+            openConfirmModal("Delete User Account", `Delete user account ${username}?`, () => {
                 registeredUsers = registeredUsers.filter(u => u.username.toLowerCase() !== username.toLowerCase());
                 saveToCloud();
                 renderRegisteredUsersList();
-            }
+                showToast("User account deleted.", "🗑️");
+            });
         }
 
         function fillPresetCredentials(user, pass) {
@@ -1708,6 +2666,7 @@
                 saveToCloud();
                 updateUserUI();
                 closeLoginModal();
+                showToast(`Welcome back, ${found.name}!`, "👋");
             } else {
                 const err = document.getElementById('loginErrorMsg');
                 err.textContent = "Invalid credentials!";
@@ -1716,24 +2675,29 @@
         }
 
         function handleUserRegistration() {
-            if (!currentUser || currentUser.role !== 'Admin') return alert("Access Denied: Admin only.");
+            if (!currentUser || currentUser.role !== 'Admin') return showToast("Access Denied: Admin only.", "🛡️");
             const name = document.getElementById('regDisplayName').value.trim();
             const u = document.getElementById('regUsername').value.trim();
             const p = document.getElementById('regPassword').value.trim();
             const role = document.getElementById('regUserRole').value;
 
             if (!name || !u || !p) return;
-            if (registeredUsers.some(user => user.username.toLowerCase() === u.toLowerCase())) return alert("Username taken!");
+            if (registeredUsers.some(user => user.username.toLowerCase() === u.toLowerCase())) {
+                return showToast("Username already taken!", "⚠️");
+            }
 
             registeredUsers.push({ username: u, password: p, name, role });
             saveToCloud();
             switchAuthMode('manage');
+            showToast(`User ${u} created.`, "✅");
         }
 
         function handleLogout() {
             currentUser = null;
             saveToCloud();
             updateUserUI();
+            openLoginManager(); // or openLoginModal
+            openLoginModal();
         }
     </script>
 </body>
