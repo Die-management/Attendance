@@ -49,7 +49,7 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-slate-100 text-gray-800 font-sans min-h-screen pb-6">
+<body class="bg-slate-300 text-gray-800 font-sans min-h-screen pb-6">
 
     <!-- Printable Barcode Badge Area -->
     <div id="printBadgeArea" class="print-only p-2">
@@ -81,7 +81,7 @@
         <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap justify-between items-center gap-2">
             <div class="flex items-center gap-2 sm:gap-3">
                 <h1 class="text-base sm:text-xl font-bold tracking-wide flex items-center gap-1.5">
-                    <span>👷</span> Worker Attendance, OT & Lockers
+                    <span>👷</span> KECI Worker Attendance, OT & Lockers
                 </h1>
                 <span id="syncStatus" class="bg-blue-900 text-blue-200 text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1 font-mono">
                     <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse" id="syncStatusDot"></span>
@@ -397,7 +397,7 @@
     </div>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto p-2 sm:p-4 no-print">
+    <main class="w-full px-2 sm:px-4 no-print">
 
         <!-- TAB 1: DAILY ATTENDANCE -->
         <div id="tabDailyView" class="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-start">
@@ -1224,9 +1224,25 @@
         }
 
         function initLiveClock() {
+            let lastRenderedMinute = -1;
             setInterval(() => {
                 const now = new Date();
                 document.getElementById('liveClock').textContent = now.toLocaleTimeString();
+
+                // Auto-refresh live working durations for punched-IN workers whenever the minute changes
+                const currentMinute = now.getMinutes();
+                if (currentMinute !== lastRenderedMinute) {
+                    lastRenderedMinute = currentMinute;
+                    const hasActiveWorkers = attendanceLogs.some(l => l.status === 'IN');
+                    if (hasActiveWorkers) {
+                        if (!document.getElementById('tabDailyView').classList.contains('hidden')) {
+                            renderDailyTable();
+                        }
+                        if (!document.getElementById('tabHistoryView').classList.contains('hidden')) {
+                            renderHistoryTable();
+                        }
+                    }
+                }
             }, 1000);
         }
 
@@ -1497,7 +1513,7 @@
                     </td>
                     <td class="py-2.5 px-3 text-emerald-700 font-bold">${escapeHtml(log.inTime)}</td>
                     <td class="py-2.5 px-3 text-purple-700 font-bold">${escapeHtml(log.outTime || '--:--')}</td>
-                    <td class="py-2.5 px-3">${totalFormatted}</td>
+                    <td class="py-2.5 px-3 ${log.status === 'IN' ? 'text-emerald-700 font-bold' : ''}">${totalFormatted}</td>
                     <td class="py-2.5 px-3 font-bold ${(log.otMinutes || 0) > 0 ? 'text-purple-600' : 'text-gray-400'}">${otFormatted}</td>
                     <td class="py-2.5 px-3 text-gray-500">${escapeHtml(log.loggedBy)}</td>
                     <td class="py-2.5 px-3">
@@ -1528,7 +1544,7 @@
                         <span>In: <strong class="text-emerald-700">${escapeHtml(log.inTime)}</strong> | Out: <strong class="text-purple-700">${escapeHtml(log.outTime || '--:--')}</strong></span>
                     </div>
                     <div class="flex justify-between items-center pt-1 border-t border-gray-100 pl-6">
-                        <span class="font-mono text-[11px]">Time: <strong>${totalFormatted}</strong> | OT: <strong class="text-purple-600">${otFormatted}</strong></span>
+                        <span class="font-mono text-[11px]">Time: <strong class="${log.status === 'IN' ? 'text-emerald-700' : ''}">${totalFormatted}</strong> | OT: <strong class="text-purple-600">${otFormatted}</strong></span>
                         <div class="space-x-1">
                             <button onclick="openModifyOutTimeModal('${log.id}')" class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-[10px] font-semibold">✏️ Edit</button>
                             <button onclick="deleteAttendanceLog('${log.id}')" class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-semibold">🗑️ Delete</button>
@@ -1625,6 +1641,11 @@
                 return true;
             });
 
+            // Recalculate active IN logs live in History view too
+            filteredLogs.forEach(l => {
+                if (l.status === 'IN') calculateLogHours(l);
+            });
+
             const tbody = document.getElementById('historyTableBody');
             const mobileList = document.getElementById('historyMobileList');
             tbody.innerHTML = '';
@@ -1649,7 +1670,7 @@
                     <td class="py-2.5 px-4">${escapeHtml(log.type)}${log.agency ? ' (' + escapeHtml(log.agency) + ')' : ''}</td>
                     <td class="py-2.5 px-4 text-emerald-700 font-bold">${escapeHtml(log.inTime)}</td>
                     <td class="py-2.5 px-4 text-purple-700 font-bold">${escapeHtml(log.outTime || '--:--')}</td>
-                    <td class="py-2.5 px-4">${totalFormatted}</td>
+                    <td class="py-2.5 px-4 ${log.status === 'IN' ? 'text-emerald-700 font-bold' : ''}">${totalFormatted}</td>
                     <td class="py-2.5 px-4 font-bold text-purple-600">${otFormatted}</td>
                     <td class="py-2.5 px-4 text-gray-500">${escapeHtml(log.loggedBy)}</td>
                     <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${log.status === 'IN' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-700'}">${escapeHtml(log.status)}</span></td>
@@ -1672,7 +1693,7 @@
                         ${lockerBadge}
                     </div>
                     <div class="flex justify-between items-center pt-1 border-t border-gray-100">
-                        <span class="font-mono text-[11px]">Time: <strong>${totalFormatted}</strong> | OT: <strong class="text-purple-600">${otFormatted}</strong></span>
+                        <span class="font-mono text-[11px]">Time: <strong class="${log.status === 'IN' ? 'text-emerald-700' : ''}">${totalFormatted}</strong> | OT: <strong class="text-purple-600">${otFormatted}</strong></span>
                         <div class="space-x-2">
                             <button onclick="openModifyOutTimeModal('${log.id}')" class="text-purple-600 font-semibold">Edit</button>
                             <button onclick="deleteAttendanceLog('${log.id}')" class="text-red-600 font-semibold">Delete</button>
@@ -2454,6 +2475,7 @@
 
             let csvContent = "data:text/csv;charset=utf-8,Date,Worker ID,Name,Locker No,Department,Type,Agency,In Time,Out Time,Total Time,OT Time,Logged By,Status\n";
             logsToExport.forEach(l => {
+                if (l.status === 'IN') calculateLogHours(l);
                 const totalFormatted = formatMinutesToHHMM(l.totalMinutes || 0);
                 const otFormatted = formatMinutesToHHMM(l.otMinutes || 0);
                 const w = workersDirectory[l.workerId];
@@ -2696,7 +2718,6 @@
             currentUser = null;
             saveToCloud();
             updateUserUI();
-            openLoginManager(); // or openLoginModal
             openLoginModal();
         }
     </script>
