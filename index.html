@@ -235,16 +235,16 @@
         </div>
     </div>
 
-    <!-- Modal 2: Modify Out Time -->
+    <!-- Modal 2: Modify Out Date & Time -->
     <div id="modifyOutTimeModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-xl p-5 max-w-sm w-full shadow-2xl border border-gray-200 relative">
             <button onclick="closeModifyOutTimeModal()" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-lg font-bold">&times;</button>
-            <h3 class="text-base font-bold text-gray-800 mb-1">🕒 Modify Worker Out Time</h3>
+            <h3 class="text-base font-bold text-gray-800 mb-1">🕒 Modify Worker Out Date & Time</h3>
             <p id="modOutWorkerName" class="text-xs text-blue-700 font-semibold mb-3"></p>
             
             <div class="space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs mb-4">
                 <div class="flex justify-between">
-                    <span class="text-gray-500">In Time:</span>
+                    <span class="text-gray-500">In (Date / Time):</span>
                     <strong id="modOutInTime" class="text-emerald-700 font-mono">--:--</strong>
                 </div>
                 <div class="flex justify-between">
@@ -252,12 +252,16 @@
                     <strong id="modOutCurrentTime" class="text-purple-700 font-mono">--:--</strong>
                 </div>
                 <div>
-                    <label class="block text-gray-700 font-semibold mb-1">Set New Out Time (24h format):</label>
+                    <label class="block text-gray-700 font-semibold mb-1">Set Out Date:</label>
+                    <input type="date" id="newOutDateInput" class="w-full border rounded-lg p-2 font-mono text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-1">Set Out Time (24h format):</label>
                     <input type="time" id="newOutTimeInput" class="w-full border rounded-lg p-2 font-mono text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="setCurrentOutTimeInModal()" class="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-800 py-1 rounded text-[11px] font-semibold transition">
-                        ⚡ Set Current Time
+                    <button onclick="setCurrentOutDateTimeInModal()" class="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-800 py-1 rounded text-[11px] font-semibold transition">
+                        ⚡ Set Current Date/Time
                     </button>
                     <button onclick="clearOutTimeInModal()" class="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-800 py-1 rounded text-[11px] font-semibold transition">
                         🗑️ Reset (IN Status)
@@ -267,7 +271,7 @@
 
             <div class="flex gap-2 justify-end">
                 <button onclick="closeModifyOutTimeModal()" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded-lg transition">Cancel</button>
-                <button onclick="saveModifiedOutTime()" class="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg transition">Save Out Time</button>
+                <button onclick="saveModifiedOutTime()" class="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg transition">Save Out Date & Time</button>
             </div>
         </div>
     </div>
@@ -1229,7 +1233,6 @@
                 const now = new Date();
                 document.getElementById('liveClock').textContent = now.toLocaleTimeString();
 
-                // Auto-refresh live working durations for punched-IN workers whenever the minute changes
                 const currentMinute = now.getMinutes();
                 if (currentMinute !== lastRenderedMinute) {
                     lastRenderedMinute = currentMinute;
@@ -1303,7 +1306,6 @@
             }
         }
 
-        // --- Helper: Minutes to HH:MM format ---
         function formatMinutesToHHMM(totalMinutes) {
             if (isNaN(totalMinutes) || totalMinutes < 0) return "00:00";
             const hours = Math.floor(totalMinutes / 60);
@@ -1311,14 +1313,36 @@
             return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
         }
 
-        // --- Core Punch & Cooldown Scan Logic ---
+        // --- Core Punch & Cooldown Scan Logic with Yesterday Open-Punch Block ---
         function processBarcodeScan(barcodeId) {
             const cleanId = barcodeId.trim();
             if (!cleanId) return;
 
+            let worker = workersDirectory[cleanId];
+            if (!worker) {
+                triggerScanFeedback(true);
+                showToast(`Worker ID "${cleanId}" is not registered in Master Directory & Badges!`, "⚠️");
+                showAlert(`❌ Scan blocked: Worker ID <strong>${escapeHtml(cleanId)}</strong> is not registered. Please register the worker first.`, "warning");
+                return;
+            }
+
+            // --- CHECK 1: Verify if worker has an active open punch from yesterday or earlier ---
+            const openPreviousLog = attendanceLogs.find(l => l.workerId === cleanId && l.status === 'IN' && l.date < getTodayDateString());
+            if (openPreviousLog) {
+                triggerScanFeedback(true);
+                calculateLogHours(openPreviousLog);
+                const workingTimeFormatted = formatMinutesToHHMM(openPreviousLog.totalMinutes);
+                
+                // Show pop-up warning alert and toast
+                showToast(`Scan blocked: Worker has not punched out since ${openPreviousLog.date}!`, "⚠️");
+                showAlert(`🛑 <strong>Scan Blocked:</strong> ${escapeHtml(worker.name)} (${escapeHtml(cleanId)}) punched in on <strong>${openPreviousLog.date} at ${openPreviousLog.inTime}</strong> and has not punched out yet. 
+                           <br>⏱️ <strong>Active Working Hours Accumulated:</strong> <span class="text-purple-700 font-bold">${workingTimeFormatted}</span> 
+                           <br><em>Please punch out the worker from yesterday's log before checking them in today.</em>`, "warning");
+                return;
+            }
+
             const now = Date.now();
 
-            // 5-Minute Cooldown Check
             if (lastScanTimes[cleanId]) {
                 const elapsed = now - lastScanTimes[cleanId];
                 if (elapsed < SCAN_COOLDOWN_MS) {
@@ -1331,27 +1355,8 @@
                 }
             }
 
-            // Successful Scan Trigger
             lastScanTimes[cleanId] = now;
             triggerScanFeedback(false);
-
-            let worker = workersDirectory[cleanId];
-            if (!worker) {
-                worker = {
-                    id: cleanId,
-                    name: `Worker ${cleanId}`,
-                    dept: 'General',
-                    type: 'Regular',
-                    agency: '',
-                    mobile: '',
-                    lockerId: null,
-                    lockerAssignedOn: ''
-                };
-                workersDirectory[cleanId] = worker;
-                saveToCloud();
-                renderDirectoryTable();
-                autoGenerateNewWorkerId();
-            }
 
             const assignedLocker = getLockerById(worker.lockerId);
             const lockerTag = assignedLocker ? ` • <span class="bg-indigo-700 text-white px-1.5 py-0.5 rounded font-mono">🔐 Locker: ${escapeHtml(assignedLocker.no)}</span>` : '';
@@ -1370,6 +1375,7 @@
                     agency: worker.agency || '',
                     date: todayStr,
                     inTime: currentTime,
+                    outDate: '',
                     outTime: '',
                     totalMinutes: 0,
                     otMinutes: 0,
@@ -1381,11 +1387,13 @@
             } else {
                 let log = attendanceLogs[logIndex];
                 if (!log.outTime) {
+                    log.outDate = todayStr;
                     log.outTime = currentTime;
                     log.status = 'OUT';
                     calculateLogHours(log);
                     showAlert(`🚪 OUT Punch logged for <strong>${escapeHtml(worker.name)}</strong> at ${currentTime} (Time: ${formatMinutesToHHMM(log.totalMinutes)})${lockerTag}`, 'purple');
                 } else {
+                    log.outDate = todayStr;
                     log.outTime = currentTime;
                     calculateLogHours(log);
                     showAlert(`🔄 OUT Time updated for <strong>${escapeHtml(worker.name)}</strong> to ${currentTime}${lockerTag}`, 'info');
@@ -1399,6 +1407,7 @@
             }
         }
 
+        // --- Overnight Shift & Date-Based OT Calculation ---
         function calculateLogHours(log) {
             if (!log.inTime) {
                 log.totalMinutes = 0;
@@ -1406,30 +1415,31 @@
                 return;
             }
 
-            const inParts = log.inTime.split(':').map(Number);
-            let inMinutes = inParts[0] * 60 + inParts[1];
-            let outMinutes;
-
-            if (log.outTime) {
-                const outParts = log.outTime.split(':').map(Number);
-                outMinutes = outParts[0] * 60 + outParts[1];
+            const inDateTime = new Date(`${log.date}T${log.inTime}`);
+            const outDateVal = log.outDate || (log.status === 'OUT' ? log.date : getTodayDateString());
+            
+            let outDateTime;
+            if (log.status === 'IN') {
+                outDateTime = new Date();
             } else {
-                // If currently punched IN, calculate duration up to the current time live
-                const now = new Date();
-                outMinutes = now.getHours() * 60 + now.getMinutes();
+                const outTimeVal = log.outTime || getCurrentTimeString();
+                outDateTime = new Date(`${outDateVal}T${outTimeVal}`);
             }
 
-            if (outMinutes < inMinutes) outMinutes += 24 * 60;
+            let diffMs = outDateTime - inDateTime;
+            if (isNaN(diffMs) || diffMs < 0) {
+                diffMs = 0;
+            }
 
-            const diffMinutes = outMinutes - inMinutes;
+            const diffMinutes = Math.floor(diffMs / (1000 * 60));
             log.totalMinutes = diffMinutes;
 
             const shiftRuleHrs = parseFloat(document.getElementById('shiftHours').value) || 8;
             const shiftRuleMinutes = shiftRuleHrs * 60;
             const allowUnder30 = document.getElementById('allowUnder30OT').checked;
 
-            if (diffMinutes > shiftRuleMinutes) {
-                const excessMinutes = diffMinutes - shiftRuleMinutes;
+            if (log.totalMinutes > shiftRuleMinutes) {
+                const excessMinutes = log.totalMinutes - shiftRuleMinutes;
                 if (!allowUnder30 && excessMinutes < 30) {
                     log.otMinutes = 0;
                 } else {
@@ -1457,16 +1467,17 @@
             }`;
             alertEl.innerHTML = msg;
             alertEl.classList.remove('hidden');
-            setTimeout(() => alertEl.classList.add('hidden'), 5000);
+            setTimeout(() => alertEl.classList.add('hidden'), 8000);
         }
 
         function renderDailyTable() {
             const todayStr = getTodayDateString();
             const filterType = document.getElementById('dailyFilterType').value;
-            const todayLogs = attendanceLogs.filter(l => l.date === todayStr && (filterType === 'ALL' || l.type === filterType));
+            
+            // Include today's logs plus any un-punched open logs from previous days
+            const relevantLogs = attendanceLogs.filter(l => (l.date === todayStr || (l.status === 'IN' && l.date < todayStr)) && (filterType === 'ALL' || l.type === filterType));
 
-            // Continuously recalculate active IN workers durations for real-time tracking
-            todayLogs.forEach(l => {
+            relevantLogs.forEach(l => {
                 if (l.status === 'IN') calculateLogHours(l);
             });
 
@@ -1478,16 +1489,18 @@
             let presentCount = 0;
             let contractorCount = 0;
             let completedCount = 0;
-            let otWorkersCount = 0; // Count of workers whose time >= 8:30 hours (510 minutes)
+            let otWorkersCount = 0;
 
-            document.getElementById('todayCountBadge').textContent = `${todayLogs.length} Logs`;
+            document.getElementById('todayCountBadge').textContent = `${relevantLogs.length} Logs`;
 
-            todayLogs.forEach(log => {
-                presentCount++;
-                if (log.type === 'Contractor') contractorCount++;
-                if (log.status === 'OUT') completedCount++;
+            relevantLogs.forEach(log => {
+                if (log.date === todayStr) {
+                    presentCount++;
+                    if (log.type === 'Contractor') contractorCount++;
+                    if (log.status === 'OUT') completedCount++;
+                }
                 
-                // Check if working/worked time is >= 8 hours 30 mins (510 minutes)
+                // Count towards OT if total working time exceeds shift hours + buffer (e.g. >= 510 mins for 8.5h)
                 if ((log.totalMinutes || 0) >= 510) {
                     otWorkersCount++;
                 }
@@ -1496,23 +1509,24 @@
                 const totalFormatted = formatMinutesToHHMM(log.totalMinutes || 0);
                 const otFormatted = formatMinutesToHHMM(log.otMinutes || 0);
                 const lockerBadge = getWorkerLockerBadgeHtml(log.workerId);
+                const outTimeDisplay = log.outTime ? `${log.outDate && log.outDate !== log.date ? log.outDate + ' ' : ''}${log.outTime}` : '<span class="text-amber-600 font-bold">OPEN (Since ' + log.date + ')</span>';
 
                 const tr = document.createElement('tr');
-                tr.className = `hover:bg-slate-50 transition ${isChecked ? 'bg-blue-50/60' : ''}`;
+                tr.className = `hover:bg-slate-50 transition ${isChecked ? 'bg-blue-50/60' : ''} ${log.date < todayStr ? 'bg-amber-50/40' : ''}`;
                 tr.innerHTML = `
                     <td class="py-2.5 px-3 text-center">
                         <input type="checkbox" value="${log.id}" ${isChecked ? 'checked' : ''} onchange="toggleDailyLogSelection('${log.id}', this.checked)" class="rounded text-blue-600 cursor-pointer">
                     </td>
                     <td class="py-2.5 px-3 font-bold text-gray-700">${escapeHtml(log.workerId)}</td>
-                    <td class="py-2.5 px-3 font-semibold text-blue-900">${escapeHtml(log.name)}</td>
+                    <td class="py-2.5 px-3 font-semibold text-blue-900">${escapeHtml(log.name)} ${log.date < todayStr ? '<span class="text-[9px] bg-amber-200 text-amber-900 px-1 rounded">Prev Day</span>' : ''}</td>
                     <td class="py-2.5 px-3">${lockerBadge}</td>
                     <td class="py-2.5 px-3">
                         <span class="px-1.5 py-0.5 text-[10px] rounded font-semibold ${log.type === 'Contractor' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}">
                             ${escapeHtml(log.type)}${log.agency ? ' (' + escapeHtml(log.agency) + ')' : ''}
                         </span>
                     </td>
-                    <td class="py-2.5 px-3 text-emerald-700 font-bold">${escapeHtml(log.inTime)}</td>
-                    <td class="py-2.5 px-3 text-purple-700 font-bold">${escapeHtml(log.outTime || '--:--')}</td>
+                    <td class="py-2.5 px-3 text-emerald-700 font-bold">${escapeHtml(log.date)} ${escapeHtml(log.inTime)}</td>
+                    <td class="py-2.5 px-3 text-purple-700 font-bold">${outTimeDisplay}</td>
                     <td class="py-2.5 px-3 ${log.status === 'IN' ? 'text-emerald-700 font-bold' : ''}">${totalFormatted}</td>
                     <td class="py-2.5 px-3 font-bold ${(log.otMinutes || 0) > 0 ? 'text-purple-600' : 'text-gray-400'}">${otFormatted}</td>
                     <td class="py-2.5 px-3 text-gray-500">${escapeHtml(log.loggedBy)}</td>
@@ -1541,7 +1555,7 @@
                     </div>
                     <div class="flex justify-between text-[11px] text-gray-600 pl-6">
                         <span>Type: <strong>${escapeHtml(log.type)}</strong></span>
-                        <span>In: <strong class="text-emerald-700">${escapeHtml(log.inTime)}</strong> | Out: <strong class="text-purple-700">${escapeHtml(log.outTime || '--:--')}</strong></span>
+                        <span>In: <strong class="text-emerald-700">${escapeHtml(log.inTime)}</strong> | Out: <strong class="text-purple-700">${outTimeDisplay}</strong></span>
                     </div>
                     <div class="flex justify-between items-center pt-1 border-t border-gray-100 pl-6">
                         <span class="font-mono text-[11px]">Time: <strong class="${log.status === 'IN' ? 'text-emerald-700' : ''}">${totalFormatted}</strong> | OT: <strong class="text-purple-600">${otFormatted}</strong></span>
@@ -1572,7 +1586,7 @@
         function toggleSelectAllDaily(masterCheckbox) {
             const todayStr = getTodayDateString();
             const filterType = document.getElementById('dailyFilterType').value;
-            const todayLogs = attendanceLogs.filter(l => l.date === todayStr && (filterType === 'ALL' || l.type === filterType));
+            const todayLogs = attendanceLogs.filter(l => (l.date === todayStr || (l.status === 'IN' && l.date < todayStr)) && (filterType === 'ALL' || l.type === filterType));
 
             if (masterCheckbox.checked) {
                 todayLogs.forEach(l => selectedDailyLogs.add(l.id));
@@ -1641,7 +1655,6 @@
                 return true;
             });
 
-            // Recalculate active IN logs live in History view too
             filteredLogs.forEach(l => {
                 if (l.status === 'IN') calculateLogHours(l);
             });
@@ -1656,6 +1669,7 @@
                 const totalFormatted = formatMinutesToHHMM(log.totalMinutes || 0);
                 const otFormatted = formatMinutesToHHMM(log.otMinutes || 0);
                 const lockerBadge = getWorkerLockerBadgeHtml(log.workerId);
+                const outTimeDisplay = log.outTime ? `${log.outDate && log.outDate !== log.date ? log.outDate + ' ' : ''}${log.outTime}` : '--:--';
 
                 const tr = document.createElement('tr');
                 tr.className = `hover:bg-slate-50 transition ${isChecked ? 'bg-blue-50/60' : ''}`;
@@ -1669,7 +1683,7 @@
                     <td class="py-2.5 px-4">${lockerBadge}</td>
                     <td class="py-2.5 px-4">${escapeHtml(log.type)}${log.agency ? ' (' + escapeHtml(log.agency) + ')' : ''}</td>
                     <td class="py-2.5 px-4 text-emerald-700 font-bold">${escapeHtml(log.inTime)}</td>
-                    <td class="py-2.5 px-4 text-purple-700 font-bold">${escapeHtml(log.outTime || '--:--')}</td>
+                    <td class="py-2.5 px-4 text-purple-700 font-bold">${escapeHtml(outTimeDisplay)}</td>
                     <td class="py-2.5 px-4 ${log.status === 'IN' ? 'text-emerald-700 font-bold' : ''}">${totalFormatted}</td>
                     <td class="py-2.5 px-4 font-bold text-purple-600">${otFormatted}</td>
                     <td class="py-2.5 px-4 text-gray-500">${escapeHtml(log.loggedBy)}</td>
@@ -1689,7 +1703,7 @@
                         <span class="text-[11px] font-mono text-gray-500">${escapeHtml(log.date)}</span>
                     </div>
                     <div class="flex justify-between items-center text-[11px] text-gray-600">
-                        <span>In: <strong class="text-emerald-700">${escapeHtml(log.inTime)}</strong> | Out: <strong class="text-purple-700">${escapeHtml(log.outTime || '--:--')}</strong></span>
+                        <span>In: <strong class="text-emerald-700">${escapeHtml(log.inTime)}</strong> | Out: <strong class="text-purple-700">${escapeHtml(outTimeDisplay)}</strong></span>
                         ${lockerBadge}
                     </div>
                     <div class="flex justify-between items-center pt-1 border-t border-gray-100">
@@ -1850,7 +1864,6 @@
             document.getElementById('editWorkerAgencyInput').value = worker.agency || '';
             toggleEditContractorInput();
 
-            // Populate Locker Dropdown (current worker's locker + available lockers)
             const lockerSelect = document.getElementById('editWorkerLockerSelect');
             lockerSelect.innerHTML = '<option value="">-- No Locker Assigned --</option>';
             const currentLocker = getLockerById(worker.lockerId);
@@ -1932,8 +1945,11 @@
             if (!log) return;
             selectedWorkerForMod = log;
             document.getElementById('modOutWorkerName').textContent = `${log.name} (ID: ${log.workerId})`;
-            document.getElementById('modOutInTime').textContent = log.inTime;
-            document.getElementById('modOutCurrentTime').textContent = log.outTime || 'NOT SET (IN)';
+            document.getElementById('modOutInTime').textContent = `${log.date} ${log.inTime}`;
+            document.getElementById('modOutCurrentTime').textContent = log.outTime ? `${log.outDate || log.date} ${log.outTime}` : 'NOT SET (IN)';
+            
+            // Populate modal inputs
+            document.getElementById('newOutDateInput').value = log.outDate || log.date || getTodayDateString();
             document.getElementById('newOutTimeInput').value = log.outTime || getCurrentTimeString();
             document.getElementById('modifyOutTimeModal').classList.remove('hidden');
         }
@@ -1943,12 +1959,14 @@
             selectedWorkerForMod = null;
         }
 
-        function setCurrentOutTimeInModal() {
+        function setCurrentOutDateTimeInModal() {
+            document.getElementById('newOutDateInput').value = getTodayDateString();
             document.getElementById('newOutTimeInput').value = getCurrentTimeString();
         }
 
         function clearOutTimeInModal() {
             if (!selectedWorkerForMod) return;
+            selectedWorkerForMod.outDate = '';
             selectedWorkerForMod.outTime = '';
             selectedWorkerForMod.status = 'IN';
             calculateLogHours(selectedWorkerForMod);
@@ -1960,15 +1978,20 @@
 
         function saveModifiedOutTime() {
             if (!selectedWorkerForMod) return;
+            const newDate = document.getElementById('newOutDateInput').value;
             const newTime = document.getElementById('newOutTimeInput').value;
-            if (!newTime) return;
+            if (!newDate || !newTime) return showToast("Please provide both out date and time.", "⚠️");
+
+            selectedWorkerForMod.outDate = newDate;
             selectedWorkerForMod.outTime = newTime;
             selectedWorkerForMod.status = 'OUT';
+            
             calculateLogHours(selectedWorkerForMod);
             saveToCloud();
             renderDailyTable();
+            renderHistoryTable();
             closeModifyOutTimeModal();
-            showToast("Out time saved.", "✅");
+            showToast("Out date & time saved successfully.", "✅");
         }
 
         function toggleContractorInput() {
@@ -2026,7 +2049,6 @@
         }
 
         function printSingleBadgeFromPreview() {
-            const svgEl = document.getElementById('previewBarcodeSvg');
             const idText = document.getElementById('badgeDept').textContent.split('ID: ')[1]?.split(' |')[0]?.trim();
             if (idText && workersDirectory[idText]) {
                 printBadgesArray([workersDirectory[idText]]);
@@ -2470,10 +2492,10 @@
 
         function exportToCSV(todayOnly) {
             const todayStr = getTodayDateString();
-            const logsToExport = todayOnly ? attendanceLogs.filter(l => l.date === todayStr) : attendanceLogs;
+            const logsToExport = todayOnly ? attendanceLogs.filter(l => l.date === todayStr || (l.status === 'IN' && l.date < todayStr)) : attendanceLogs;
             if (logsToExport.length === 0) return showToast("No logs available.", "⚠️");
 
-            let csvContent = "data:text/csv;charset=utf-8,Date,Worker ID,Name,Locker No,Department,Type,Agency,In Time,Out Time,Total Time,OT Time,Logged By,Status\n";
+            let csvContent = "data:text/csv;charset=utf-8,Date,Worker ID,Name,Locker No,Department,Type,Agency,In Time,Out Date,Out Time,Total Time,OT Time,Logged By,Status\n";
             logsToExport.forEach(l => {
                 if (l.status === 'IN') calculateLogHours(l);
                 const totalFormatted = formatMinutesToHHMM(l.totalMinutes || 0);
@@ -2489,6 +2511,7 @@
                     `"${l.type}"`,
                     `"${l.agency || ''}"`,
                     l.inTime,
+                    l.outDate || '',
                     l.outTime || '',
                     totalFormatted,
                     otFormatted,
