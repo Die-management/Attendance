@@ -612,17 +612,17 @@
                     <div class="bg-white rounded-xl shadow-sm p-3 border border-emerald-200">
                         <div class="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">1st Shift · 08:00 AM</div>
                         <div class="text-2xl font-extrabold font-mono text-emerald-800" id="shift1Count">0</div>
-                        <div class="text-[10px] text-gray-500">Punches from 06:00 AM to 12:30 PM</div>
+                        <div class="text-[10px] text-gray-500">Punches from 06:00 AM to 01:59 PM</div>
                     </div>
                     <div class="bg-white rounded-xl shadow-sm p-3 border border-blue-200">
                         <div class="text-[11px] font-semibold uppercase tracking-wide text-blue-700">2nd Shift · 04:00 PM</div>
                         <div class="text-2xl font-extrabold font-mono text-blue-800" id="shift2Count">0</div>
-                        <div class="text-[10px] text-gray-500">Punches from 02:00 PM to 08:30 PM</div>
+                        <div class="text-[10px] text-gray-500">Punches from 02:00 PM to 09:59 PM</div>
                     </div>
                     <div class="bg-white rounded-xl shadow-sm p-3 border border-purple-200">
                         <div class="text-[11px] font-semibold uppercase tracking-wide text-purple-700">3rd Shift · 12:00 AM</div>
                         <div class="text-2xl font-extrabold font-mono text-purple-800" id="shift3Count">0</div>
-                        <div class="text-[10px] text-gray-500">Punches from 10:00 PM to 04:30 AM</div>
+                        <div class="text-[10px] text-gray-500">Punches from 10:00 PM to 05:59 AM</div>
                     </div>
                 </div>
 
@@ -663,7 +663,7 @@
 
                         <div class="flex flex-wrap items-center gap-3 font-mono text-[11px]">
                             <div><span class="text-gray-500">Workers Present:</span> <strong id="statPresent" class="text-blue-600 font-bold">0</strong></div>
-                            <div><span class="text-gray-500">Regular:</span> <strong id="statRegular" class="text-indigo-600 font-bold">0</strong></div>
+                            <div><span class="text-gray-500">Regular Workers Present:</span> <strong id="statRegular" class="text-indigo-600 font-bold">0</strong></div>
                             <div><span class="text-gray-500">Contractors:</span> <strong id="statContractors" class="text-amber-600 font-bold">0</strong></div>
                             <div><span class="text-gray-500">Completed:</span> <strong id="statCompleted" class="text-emerald-600 font-bold">0</strong></div>
                             <div><span class="text-gray-500">OT Workers:</span> <strong id="statTotalOT" class="text-purple-600 font-bold">0</strong></div>
@@ -1577,11 +1577,11 @@
             setTimeout(() => alertEl.classList.add('hidden'), 8000);
         }
 
-        // Shift attendance is grouped by the date on which the shift belongs:
-        // Shift 1: 06:00-12:30; Shift 2: 14:00-20:30;
-        // Shift 3: 22:00-04:30. A 22:00-23:59 punch belongs to that same
-        // calendar date; an 00:00-04:30 punch belongs to the previous date.
-        // This keeps the complete 3-shift attendance together across midnight.
+        // Shift attendance is grouped by the operational date:
+        // Shift 1: 06:00-13:59; Shift 2: 14:00-21:59;
+        // Shift 3: 22:00-05:59. Punches from 22:00-23:59 belong to
+        // that calendar date; punches from 00:00-05:59 belong to the
+        // previous date so the complete third shift stays together.
         function getShiftForPunch(log) {
             if (!log || !log.date || !log.inTime) return null;
             const parts = log.inTime.split(':').map(Number);
@@ -1594,15 +1594,17 @@
             const shiftDate = new Date(year, month - 1, day);
             let shift = null;
 
-            if (minutes >= 6 * 60 && minutes <= 12 * 60 + 30) {
+            if (minutes >= 6 * 60 && minutes < 14 * 60) {
+                // 06:00 AM through 01:59 PM.
                 shift = 1;
-            } else if (minutes >= 14 * 60 && minutes <= 20 * 60 + 30) {
+            } else if (minutes >= 14 * 60 && minutes < 22 * 60) {
+                // 02:00 PM through 09:59 PM.
                 shift = 2;
             } else if (minutes >= 22 * 60) {
-                // Late-night punch: keep it on the same operational day.
+                // 10:00 PM through 11:59 PM: same operational date.
                 shift = 3;
-            } else if (minutes <= 4 * 60 + 30) {
-                // After-midnight continuation: attach it to yesterday's 3rd shift.
+            } else if (minutes < 6 * 60) {
+                // 12:00 AM through 05:59 AM: previous operational date.
                 shift = 3;
                 shiftDate.setDate(shiftDate.getDate() - 1);
             }
