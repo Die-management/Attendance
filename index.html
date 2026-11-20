@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Worker Attendance, OT & Locker Management (Cloud Synced)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -47,6 +47,86 @@
         .print-only { display: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Responsive layout safeguards for phones and tablets */
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+        input, select, textarea, button { max-width: 100%; }
+        button, input, select { touch-action: manipulation; }
+        .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+        table { border-collapse: separate; border-spacing: 0; }
+
+        @media (max-width: 767px) {
+            body { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+            header { position: relative !important; }
+            header > div:first-child { padding: 10px 12px; align-items: flex-start; }
+            header h1 { font-size: 14px !important; line-height: 1.25; }
+            #syncStatus { font-size: 9px; max-width: 145px; }
+            #syncStatusText { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            #authHeaderWidget { flex-wrap: wrap; justify-content: flex-end; }
+            #userInfoDisplay { max-width: 100%; }
+            header button { min-height: 36px; }
+            header .bg-blue-800.px-4 { padding: 8px 10px; }
+            header .max-w-7xl.mx-auto.flex.gap-3 { gap: 8px; }
+            header .max-w-7xl.mx-auto.flex.gap-3 button { padding: 9px 12px; font-size: 12px; }
+            main { padding-left: 8px !important; padding-right: 8px !important; }
+            #tabDailyView { grid-template-columns: minmax(0, 1fr) !important; }
+            #tabDailyView > div { min-width: 0; width: 100%; }
+            #dailyReportDate { min-width: 0; flex: 1; }
+            #tabDailyView > div.lg\:col-span-8 > .flex.justify-end { justify-content: stretch; }
+            #tabDailyView > div.lg\:col-span-8 > .flex.justify-end label { white-space: nowrap; }
+            #tabDailyView > div.lg\:col-span-8 > .flex.justify-end button { white-space: nowrap; }
+            #tabDailyView .grid.grid-cols-2.sm\:grid-cols-3 { gap: 8px; }
+            #tabDailyView .grid.grid-cols-2.sm\:grid-cols-3 > div { min-width: 0; padding: 10px; }
+            #tabDailyView .grid.grid-cols-2.sm\:grid-cols-3 > div span:first-child { font-size: 9px; line-height: 1.25; }
+            #tabDailyView .grid.grid-cols-2.sm\:grid-cols-3 > div span.text-2xl { font-size: 22px; }
+            #tabDailyView .grid.grid-cols-1.sm\:grid-cols-3 { gap: 8px; }
+            #tabDailyView .grid.grid-cols-1.sm\:grid-cols-3 > div { padding: 10px; }
+            #tabDailyView .grid.grid-cols-1.sm\:grid-cols-3 > div > div:last-child { line-height: 1.35; }
+            #dailyMobileList { max-height: none !important; min-height: 0 !important; }
+            #historyMobileList { max-height: none; }
+            #dailyMobileList > div, #historyMobileList > div { padding: 12px; overflow-wrap: anywhere; }
+            #dailyMobileList button, #historyMobileList button { min-height: 34px; }
+            #tabHistoryView .flex.gap-2.w-full { flex-wrap: wrap; }
+            #tabHistoryView .flex.gap-2.w-full button { flex: 1 1 135px; }
+            #tabDirectoryView, #tabLockerView, #tabHistoryView { min-width: 0; }
+            #tabDirectoryView .flex, #tabLockerView .flex { min-width: 0; }
+            #tabDirectoryView input, #tabDirectoryView select,
+            #tabLockerView input, #tabLockerView select,
+            #tabHistoryView input, #tabHistoryView select { min-width: 0; }
+            #tabDirectoryView .overflow-x-auto,
+            #tabLockerView .overflow-x-auto,
+            #tabHistoryView .overflow-x-auto { max-width: 100%; }
+            #tabDirectoryView table, #tabLockerView table, #tabHistoryView table { min-width: 760px; }
+            #appToast { left: 10px; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); max-width: none; }
+            #loginModal, #confirmModal { padding: 10px; align-items: flex-start; overflow-y: auto; }
+            #loginModal > div, #confirmModal > div { margin: auto 0; max-height: calc(100dvh - 20px); overflow-y: auto; }
+            .grid.grid-cols-2 { min-width: 0; }
+        }
+
+        @media (max-width: 480px) {
+            header > div:first-child { gap: 8px; }
+            header > div:first-child > div:first-child { flex: 1 1 100%; min-width: 0; }
+            header > div:first-child > div:last-child { width: 100%; justify-content: space-between; }
+            #authHeaderWidget { flex: 1; justify-content: flex-end; }
+            #userInfoDisplay { font-size: 10px; }
+            #createUserHeaderBtn, #loginHeaderBtn, #logoutHeaderBtn { font-size: 10px; padding: 8px 9px; }
+            #tabDailyView .grid.grid-cols-2.sm\:grid-cols-3 > div { min-height: 76px; }
+            #tabDailyView .grid.grid-cols-2.sm\:grid-cols-3 > div > div:last-child { font-size: 20px; padding: 5px; }
+            #tabDailyView .grid.grid-cols-2.sm\:grid-cols-3 > div span.text-2xl { font-size: 20px; }
+            #tabDailyView > div.lg\:col-span-8 > .bg-white.rounded-lg > .p-3.border-b { align-items: stretch; }
+            #tabDailyView > div.lg\:col-span-8 > .bg-white.rounded-lg > .p-3.border-b > div:last-child { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            #tabDailyView > div.lg\:col-span-8 > .bg-white.rounded-lg > .p-3.border-b button { justify-content: center; }
+            #tabDailyView .p-2.bg-slate-50 { align-items: flex-start; }
+            #tabDailyView .p-2.bg-slate-50 > div:last-child { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 10px; width: 100%; }
+            #tabDailyView .p-2.bg-slate-50 > div:last-child > div { white-space: nowrap; }
+            #tabDirectoryView .flex.flex-wrap.items-center.gap-3 > * { width: 100%; }
+            #tabDirectoryView input[type="file"] { font-size: 11px; }
+            #tabLockerView .flex.flex-wrap > input,
+            #tabLockerView .flex.flex-wrap > select { width: 100%; }
+            #dailyMobileList .flex.justify-between { gap: 8px; align-items: flex-start; }
+            #dailyMobileList .flex.justify-between > * { min-width: 0; }
+        }
     </style>
 </head>
 <body class="bg-slate-300 text-gray-800 font-sans min-h-screen pb-6">
@@ -497,8 +577,13 @@
             <div class="lg:col-span-8 space-y-3">
                 <div id="scanAlert" class="hidden p-2.5 rounded-lg border font-medium text-xs transition-all duration-300"></div>
 
+                <div class="flex justify-end items-center gap-2 mb-2 no-print">
+                    <label for="dailyReportDate" class="text-[11px] font-semibold text-gray-600">Report Date</label>
+                    <input type="date" id="dailyReportDate" onchange="setDashboardReportDate(this.value)" class="border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-xs shadow-sm">
+                    <button onclick="setDailyReportDateToday()" class="border border-blue-200 bg-blue-50 text-blue-700 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold">Today</button>
+                </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 no-print">
-                    <div class="bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded-xl shadow-md p-3.5 border border-blue-900 flex items-center justify-between">
+                    <div onclick="showDashboardWorkerDetails('PRESENT')" title="Click to view workers present on selected date" class="cursor-pointer hover:brightness-110 transition bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded-xl shadow-md p-3.5 border border-blue-900 flex items-center justify-between">
                         <div>
                             <span class="text-[11px] uppercase tracking-wider font-semibold text-blue-200 block">Workers Present</span>
                             <span class="text-2xl sm:text-3xl font-extrabold font-mono" id="topBlockPresent">0</span>
@@ -506,7 +591,7 @@
                         <div class="text-2xl sm:text-3xl bg-blue-500/30 p-2 rounded-lg">👷</div>
                     </div>
                     <!-- Updated Top Block to Show Count of OT Workers instead of Total Time -->
-                    <div class="bg-gradient-to-br from-purple-600 to-purple-800 text-white rounded-xl shadow-md p-3.5 border border-purple-900 flex items-center justify-between">
+                    <div onclick="showDashboardWorkerDetails('OT')" title="Click to view OT workers on selected date" class="cursor-pointer hover:brightness-110 transition bg-gradient-to-br from-purple-600 to-purple-800 text-white rounded-xl shadow-md p-3.5 border border-purple-900 flex items-center justify-between">
                         <div>
                             <span class="text-[11px] uppercase tracking-wider font-semibold text-purple-200 block">OT Workers (≥ 8:30)</span>
                             <span class="text-2xl sm:text-3xl font-extrabold font-mono" id="topBlockOT">0</span>
@@ -527,17 +612,17 @@
                     <div class="bg-white rounded-xl shadow-sm p-3 border border-emerald-200">
                         <div class="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">1st Shift · 08:00 AM</div>
                         <div class="text-2xl font-extrabold font-mono text-emerald-800" id="shift1Count">0</div>
-                        <div class="text-[10px] text-gray-500">Punches from 07:30 AM to 03:29 PM</div>
+                        <div class="text-[10px] text-gray-500">Punches from 06:00 AM to 12:30 PM</div>
                     </div>
                     <div class="bg-white rounded-xl shadow-sm p-3 border border-blue-200">
                         <div class="text-[11px] font-semibold uppercase tracking-wide text-blue-700">2nd Shift · 04:00 PM</div>
                         <div class="text-2xl font-extrabold font-mono text-blue-800" id="shift2Count">0</div>
-                        <div class="text-[10px] text-gray-500">Punches from 03:30 PM to 11:29 PM</div>
+                        <div class="text-[10px] text-gray-500">Punches from 02:00 PM to 08:30 PM</div>
                     </div>
                     <div class="bg-white rounded-xl shadow-sm p-3 border border-purple-200">
                         <div class="text-[11px] font-semibold uppercase tracking-wide text-purple-700">3rd Shift · 12:00 AM</div>
                         <div class="text-2xl font-extrabold font-mono text-purple-800" id="shift3Count">0</div>
-                        <div class="text-[10px] text-gray-500">Punches from 11:30 PM to 07:29 AM</div>
+                        <div class="text-[10px] text-gray-500">Punches from 10:00 PM to 04:30 AM</div>
                     </div>
                 </div>
 
@@ -567,20 +652,22 @@
                     </div>
 
                     <div class="p-2 bg-slate-50 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2 text-xs no-print">
-                        <div class="flex items-center gap-1.5">
-                            <span class="font-semibold text-gray-600 text-[11px]">Filter:</span>
-                            <select id="dailyFilterType" onchange="renderDailyTable()" class="border rounded px-2 py-1 bg-white text-xs focus:ring-1 focus:ring-blue-500 outline-none">
+                        <div class="flex flex-wrap items-center gap-2">
+<span class="font-semibold text-gray-600 text-[11px]">Worker Type:</span>
+                            <select id="dailyFilterType" onchange="dashboardDetailFilter='ALL'; renderDailyTable()" class="border rounded px-2 py-1 bg-white text-xs focus:ring-1 focus:ring-blue-500 outline-none">
                                 <option value="ALL">All Workers</option>
                                 <option value="Regular">Regular Only</option>
                                 <option value="Contractor">Contractors Only</option>
                             </select>
                         </div>
 
-                        <div class="flex items-center gap-3 font-mono text-[11px]">
-                            <div><span class="text-gray-500">Present:</span> <strong id="statPresent" class="text-blue-600 font-bold">0</strong></div>
+                        <div class="flex flex-wrap items-center gap-3 font-mono text-[11px]">
+                            <div><span class="text-gray-500">Workers Present:</span> <strong id="statPresent" class="text-blue-600 font-bold">0</strong></div>
+                            <div><span class="text-gray-500">Regular:</span> <strong id="statRegular" class="text-indigo-600 font-bold">0</strong></div>
                             <div><span class="text-gray-500">Contractors:</span> <strong id="statContractors" class="text-amber-600 font-bold">0</strong></div>
                             <div><span class="text-gray-500">Completed:</span> <strong id="statCompleted" class="text-emerald-600 font-bold">0</strong></div>
-                            <div><span class="text-gray-500">OT Workers (≥8:30):</span> <strong id="statTotalOT" class="text-purple-600 font-bold">0</strong></div>
+                            <div><span class="text-gray-500">OT Workers:</span> <strong id="statTotalOT" class="text-purple-600 font-bold">0</strong></div>
+                            <div><span class="text-gray-500">Total OT:</span> <strong id="statTotalOTHours" class="text-purple-700 font-bold">00:00</strong></div>
                         </div>
                     </div>
 
@@ -1040,6 +1127,7 @@
         ];
 
         let selectedDailyLogs = new Set();
+        let dashboardDetailFilter = 'ALL';
         let selectedHistoryLogs = new Set();
         let selectedDirWorkers = new Set();
 
@@ -1255,14 +1343,14 @@
                 const currentMinute = now.getMinutes();
                 if (currentMinute !== lastRenderedMinute) {
                     lastRenderedMinute = currentMinute;
-                    const hasActiveWorkers = attendanceLogs.some(l => l.status === 'IN');
-                    if (hasActiveWorkers) {
-                        if (!document.getElementById('tabDailyView').classList.contains('hidden')) {
-                            renderDailyTable();
-                        }
-                        if (!document.getElementById('tabHistoryView').classList.contains('hidden')) {
-                            renderHistoryTable();
-                        }
+                    // Always refresh the daily summary, including at midnight when
+                    // no worker is currently marked IN (the operational date changes).
+                    if (!document.getElementById('tabDailyView').classList.contains('hidden')) {
+                        renderDailyTable();
+                    }
+                    if (attendanceLogs.some(l => l.status === 'IN') &&
+                        !document.getElementById('tabHistoryView').classList.contains('hidden')) {
+                        renderHistoryTable();
                     }
                 }
             }, 1000);
@@ -1489,16 +1577,18 @@
             setTimeout(() => alertEl.classList.add('hidden'), 8000);
         }
 
-        // Punch allocation windows (inclusive):
+        // Shift attendance is grouped by the date on which the shift belongs:
         // Shift 1: 06:00-12:30; Shift 2: 14:00-20:30;
-        // Shift 3: 22:00-04:30. Shift 3 is grouped under the date on
-        // which its midnight start falls, so 22:00-23:59 maps to tomorrow.
-        // Punches outside all three windows are not assigned to a shift.
+        // Shift 3: 22:00-04:30. A 22:00-23:59 punch belongs to that same
+        // calendar date; an 00:00-04:30 punch belongs to the previous date.
+        // This keeps the complete 3-shift attendance together across midnight.
         function getShiftForPunch(log) {
             if (!log || !log.date || !log.inTime) return null;
             const parts = log.inTime.split(':').map(Number);
             if (parts.length < 2 || !Number.isFinite(parts[0]) || !Number.isFinite(parts[1])) return null;
-            const minutes = parts[0] * 60 + parts[1];
+            const hours = parts[0], mins = parts[1];
+            if (hours < 0 || hours > 23 || mins < 0 || mins > 59) return null;
+            const minutes = hours * 60 + mins;
 
             const [year, month, day] = log.date.split('-').map(Number);
             const shiftDate = new Date(year, month - 1, day);
@@ -1509,10 +1599,12 @@
             } else if (minutes >= 14 * 60 && minutes <= 20 * 60 + 30) {
                 shift = 2;
             } else if (minutes >= 22 * 60) {
+                // Late-night punch: keep it on the same operational day.
                 shift = 3;
-                shiftDate.setDate(shiftDate.getDate() + 1);
             } else if (minutes <= 4 * 60 + 30) {
+                // After-midnight continuation: attach it to yesterday's 3rd shift.
                 shift = 3;
+                shiftDate.setDate(shiftDate.getDate() - 1);
             }
 
             if (shift === null) return null;
@@ -1528,7 +1620,7 @@
             attendanceLogs.forEach(log => {
                 const assignment = getShiftForPunch(log);
                 if (!assignment || assignment.operationalDate !== today) return;
-                // Count each worker once per shift, including workers who have subsequently punched OUT.
+                // Count each worker once per shift, even after an OUT punch.
                 countedWorkers[assignment.shift].add(log.workerId);
             });
 
@@ -1539,15 +1631,60 @@
             document.getElementById('shift1Count').textContent = counts[1];
             document.getElementById('shift2Count').textContent = counts[2];
             document.getElementById('shift3Count').textContent = counts[3];
+
+            // Present = unique workers recorded in any of today's three shifts.
+            // At midnight, yesterday's 3rd shift stays with yesterday; today's
+            // present count starts building when today's first shift punches arrive.
+            const allTodayShiftWorkers = new Set([
+                ...countedWorkers[1], ...countedWorkers[2], ...countedWorkers[3]
+            ]);
+            document.getElementById('topBlockPresent').textContent = allTodayShiftWorkers.size;
+        }
+
+        function setDashboardReportDate(value) {
+            const dateInput = document.getElementById('dailyReportDate');
+            if (dateInput) dateInput.value = value || getTodayDateString();
+            dashboardDetailFilter = 'ALL';
+            renderDailyTable();
+        }
+
+        function setDailyReportDateToday() {
+            setDashboardReportDate(getTodayDateString());
+        }
+
+        function showDashboardWorkerDetails(mode) {
+            dashboardDetailFilter = mode;
+            renderDailyTable();
+            const tableHeader = document.getElementById('todayCountBadge');
+            if (tableHeader) tableHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function renderDailyTable() {
             updateShiftPunchCounts();
             const todayStr = getTodayDateString();
+            const dateInput = document.getElementById('dailyReportDate');
+            if (dateInput && !dateInput.value) dateInput.value = todayStr;
+            const selectedDate = dateInput && dateInput.value ? dateInput.value : todayStr;
             const filterType = document.getElementById('dailyFilterType').value;
-            
-            // Include today's logs plus any un-punched open logs from previous days
-            const relevantLogs = attendanceLogs.filter(l => (l.date === todayStr || (l.status === 'IN' && l.date < todayStr)) && (filterType === 'ALL' || l.type === filterType));
+
+            const selectedDateLogs = attendanceLogs.filter(l => {
+                const assignment = getShiftForPunch(l);
+                const reportDate = assignment ? assignment.operationalDate : l.date;
+                return reportDate === selectedDate && (filterType === 'ALL' || l.type === filterType);
+            });
+
+            selectedDateLogs.forEach(l => {
+                if (l.status === 'IN') calculateLogHours(l);
+            });
+
+            const presentIds = new Set(selectedDateLogs.map(l => String(l.workerId)));
+            const otIds = new Set(selectedDateLogs.filter(l => (Number(l.otMinutes) || 0) > 0).map(l => String(l.workerId)));
+            document.getElementById('topBlockPresent').textContent = presentIds.size;
+            document.getElementById('topBlockOT').textContent = otIds.size;
+
+            const relevantLogs = dashboardDetailFilter === 'OT'
+                ? selectedDateLogs.filter(l => (Number(l.otMinutes) || 0) > 0)
+                : selectedDateLogs;
 
             relevantLogs.forEach(l => {
                 if (l.status === 'IN') calculateLogHours(l);
@@ -1558,23 +1695,27 @@
             tbody.innerHTML = '';
             mobileList.innerHTML = '';
 
-            let presentCount = 0;
-            let contractorCount = 0;
+            const presentWorkers = new Set();
+            const regularWorkers = new Set();
+            const contractorWorkers = new Set();
+            const otWorkers = new Set();
             let completedCount = 0;
-            let otWorkersCount = 0;
+            let totalOTMinutes = 0;
 
-            document.getElementById('todayCountBadge').textContent = `${relevantLogs.length} Logs`;
+            document.getElementById('todayCountBadge').textContent = `${relevantLogs.length} Worker Logs`;
+            document.getElementById('currentDateDisplay').textContent =
+                `Attendance: ${selectedDate} · ${dashboardDetailFilter === 'OT' ? 'Showing OT workers only' : dashboardDetailFilter === 'PRESENT' ? 'Showing all workers present' : 'Showing all workers'} · all 3 shifts`;
 
-            relevantLogs.forEach(log => {
-                if (log.date === todayStr) {
-                    presentCount++;
-                    if (log.type === 'Contractor') contractorCount++;
-                    if (log.status === 'OUT') completedCount++;
-                }
-                
-                // Count towards OT if total working time exceeds shift hours + buffer (e.g. >= 510 mins for 8.5h)
-                if ((log.totalMinutes || 0) >= 510) {
-                    otWorkersCount++;
+            selectedDateLogs.forEach(log => {
+                presentWorkers.add(String(log.workerId));
+                if (log.type === 'Contractor') contractorWorkers.add(String(log.workerId));
+                else regularWorkers.add(String(log.workerId));
+                if (log.status === 'OUT') completedCount++;
+
+                const workerOT = Math.max(0, Number(log.otMinutes) || 0);
+                if (workerOT > 0) {
+                    otWorkers.add(String(log.workerId));
+                    totalOTMinutes += workerOT;
                 }
 
                 const isChecked = selectedDailyLogs.has(log.id);
@@ -1640,12 +1781,16 @@
                 mobileList.appendChild(card);
             });
 
-            document.getElementById('statPresent').textContent = presentCount;
-            document.getElementById('statContractors').textContent = contractorCount;
+            document.getElementById('statPresent').textContent = presentWorkers.size;
+            document.getElementById('statRegular').textContent = regularWorkers.size;
+            document.getElementById('statContractors').textContent = contractorWorkers.size;
             document.getElementById('statCompleted').textContent = completedCount;
-            document.getElementById('statTotalOT').textContent = otWorkersCount;
-            document.getElementById('topBlockPresent').textContent = presentCount;
-            document.getElementById('topBlockOT').textContent = otWorkersCount;
+            document.getElementById('statTotalOT').textContent = otWorkers.size;
+            document.getElementById('statTotalOTHours').textContent = formatMinutesToHHMM(totalOTMinutes);
+            // Live top cards remain tied to today's operational shifts.
+            if (selectedDate === todayStr) {
+                document.getElementById('topBlockOT').textContent = otWorkers.size;
+            }
             document.getElementById('dailySelectedCount').textContent = selectedDailyLogs.size;
         }
 
